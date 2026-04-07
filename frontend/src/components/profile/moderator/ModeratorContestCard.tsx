@@ -40,23 +40,26 @@ export const ModeratorContestCard = ({
             </div>
           </div>
           
-          <div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
-            <button 
-              onClick={(e) => handleAction(e, onAction1)}
-              className="border border-brand-dark-teal text-brand-dark-teal px-8 py-3.5 rounded-xl font-roboto hover:bg-brand-dark-teal hover:text-white transition-all text-base whitespace-nowrap active:scale-95 text-center"
-            >
-              {isResults ? 'Компиляция для жюри' : 'Компиляция заявок'}
-            </button>
-            
-            {isResults && onAction2 && (
-              <button 
-                onClick={(e) => handleAction(e, onAction2)}
-                className="border border-brand-dark-teal text-brand-dark-teal px-8 py-3.5 rounded-xl font-roboto hover:bg-brand-dark-teal hover:text-white transition-all text-base whitespace-nowrap active:scale-95 text-center"
-              >
-                Опубликовать результаты
-              </button>
-            )}
-          </div>
+<div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
+  {/* Кнопка отображается только если isResults === true */}
+  {isResults && (
+    <button 
+      onClick={(e) => handleAction(e, onAction1)}
+      className="border border-brand-dark-teal text-brand-dark-teal px-8 py-3.5 rounded-xl font-roboto hover:bg-brand-dark-teal hover:text-white transition-all text-base whitespace-nowrap active:scale-95 text-center"
+    >
+      Компиляция для жюри
+    </button>
+  )}
+  
+  {isResults && onAction2 && (
+    <button 
+      onClick={(e) => handleAction(e, onAction2)}
+      className="border border-brand-dark-teal text-brand-dark-teal px-8 py-3.5 rounded-xl font-roboto hover:bg-brand-dark-teal hover:text-white transition-all text-base whitespace-nowrap active:scale-95 text-center"
+    >
+      Опубликовать результаты
+    </button>
+  )}
+</div>
         </div>
 
         <div className="pt-8 border-t border-brand-dark-teal/20">

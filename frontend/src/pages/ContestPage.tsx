@@ -57,30 +57,32 @@ export const ContestPage = () => {
               Положение
             </button>
             
-            {isModerator ? (
-              <>
-                <button 
-                  onClick={() => navigate('/contest/edit?mode=edit')}
-                  className="w-full md:flex-1 py-4 bg-[#F07D58] text-white rounded-2xl font-unbounded text-lg shadow-lg hover:bg-opacity-90 transition-all font-normal"
-                >
-                  Редактировать
-                </button>
-                <button 
-                  onClick={() => setIsConfirmDeleteOpen(true)} // Открываем модалку подтверждения
-                  className="w-full md:flex-1 py-4 border-2 border-brand-red-dark text-brand-red-dark rounded-2xl font-unbounded text-lg hover:bg-brand-red-dark hover:text-white transition-all font-normal"
-                >
-                  Удалить
-                </button>
-              </>
+            {/* Если конкурс завершен, все видят кнопку Результаты */}
+            {isFinished ? (
+              <button 
+                onClick={() => setIsResultsModalOpen(true)} 
+                className="w-full md:flex-1 py-4 bg-[#3D828A] text-white rounded-2xl font-unbounded text-lg shadow-lg hover:bg-opacity-90 transition-all font-normal"
+              >
+                Результаты
+              </button>
             ) : (
+              /* Если конкурс НЕ завершен, показываем кнопки в зависимости от роли */
               <>
-                {isFinished ? (
-                  <button 
-                    onClick={() => setIsResultsModalOpen(true)} 
-                    className="w-full md:flex-1 py-4 bg-[#3D828A] text-white rounded-2xl font-unbounded text-lg shadow-lg hover:bg-opacity-90 transition-all font-normal"
-                  >
-                    Результаты
-                  </button>
+                {isModerator ? (
+                  <>
+                    <button 
+                      onClick={() => navigate('/contest/edit?mode=edit')}
+                      className="w-full md:flex-1 py-4 bg-[#F07D58] text-white rounded-2xl font-unbounded text-lg shadow-lg hover:bg-opacity-90 transition-all font-normal"
+                    >
+                      Редактировать
+                    </button>
+                    <button 
+                      onClick={() => setIsConfirmDeleteOpen(true)}
+                      className="w-full md:flex-1 py-4 border-2 border-brand-red-dark text-brand-red-dark rounded-2xl font-unbounded text-lg hover:bg-brand-red-dark hover:text-white transition-all font-normal"
+                    >
+                      Удалить
+                    </button>
+                  </>
                 ) : (
                   <button 
                     onClick={() => isStudent && hasSubmitted ? setIsSubmissionModalOpen(true) : setIsFormOpen(true)}
@@ -92,6 +94,16 @@ export const ContestPage = () => {
                   </button>
                 )}
               </>
+            )}
+            
+            {/* Кнопка Удалить для модератора остается доступной даже при завершенном конкурсе */}
+            {isModerator && isFinished && (
+              <button 
+                onClick={() => setIsConfirmDeleteOpen(true)}
+                className="w-full md:flex-1 py-4 border-2 border-brand-red-dark text-brand-red-dark rounded-2xl font-unbounded text-lg hover:bg-brand-red-dark hover:text-white transition-all font-normal"
+              >
+                Удалить
+              </button>
             )}
           </div>
         ) : (
@@ -113,7 +125,6 @@ export const ContestPage = () => {
         )}
       </div>
 
-      {/* МОДАЛКИ */}
       <ResultsModal 
         isOpen={isResultsModalOpen} 
         onClose={() => setIsResultsModalOpen(false)} 
@@ -125,7 +136,6 @@ export const ContestPage = () => {
         onClose={() => setIsSubmissionModalOpen(false)} 
       />
 
-      {/* Наша модалка подтверждения удаления */}
       <ConfirmModal 
         isOpen={isConfirmDeleteOpen} 
         onClose={() => setIsConfirmDeleteOpen(false)} 

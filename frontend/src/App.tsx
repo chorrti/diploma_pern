@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from
 import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { AuthModal } from './components/AuthModal';
+import { ForgotPasswordModal } from './components/ForgotPasswordModal';
 import { ProfilePage } from './pages/ProfilePage';
 import { Home } from './pages/Home';
 import { Registration } from './pages/Registration';
@@ -23,6 +24,7 @@ const ScrollToTop = () => {
 const AppContent = () => {
   const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false); // Состояние для модалки восстановления
   
   // 1. Изначально ставим false. Чтобы тестировать профиль, 
   // модалка входа теперь реально переключает этот статус.
@@ -44,6 +46,12 @@ const AppContent = () => {
     // После логина обычно ведем в профиль
     navigate('/profile');
     console.log('Вход выполнен успешно');
+  };
+
+  // Функция для открытия восстановления пароля из окна авторизации
+  const handleOpenForgot = () => {
+    setIsAuthModalOpen(false);
+    setIsForgotModalOpen(true);
   };
 
   return (
@@ -78,8 +86,13 @@ const AppContent = () => {
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)}
-        onForgotClick={() => console.log('Восстановление пароля')}
+        onForgotClick={handleOpenForgot}
         onSuccess={handleLoginSuccess}
+      />
+
+      <ForgotPasswordModal 
+        isOpen={isForgotModalOpen} 
+        onClose={() => setIsForgotModalOpen(false)} 
       />
     </div>
   );

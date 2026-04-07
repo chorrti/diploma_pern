@@ -1,14 +1,26 @@
 import { motion, AnimatePresence } from 'framer-motion';
 
-export const MySubmissionModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+interface MySubmissionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  isModerator?: boolean;
+}
+
+export const MySubmissionModal = ({ isOpen, onClose, isModerator }: MySubmissionModalProps) => {
   const data = {
     title: "Название работы",
     description: "Описание работы ученика, которое он ввел при подаче заявки. Тут может быть длинный текст о концепции и процессе создания.",
-    link: "https://disk.yandex.ru/d/example-link", // Вот она, родимая
+    link: "https://disk.yandex.ru/d/example-link", 
     author: "Иванов Иван",
     organization: "Школа №1",
     city: "Самара",
     boss: "Петров П.П."
+  };
+
+  const handleRemoveFromExhibition = () => {
+    // Логика удаления (например, вызов API)
+    console.log("Работа удалена с выставки модератором");
+    onClose();
   };
 
   return (
@@ -51,7 +63,7 @@ export const MySubmissionModal = ({ isOpen, onClose }: { isOpen: boolean, onClos
               {/* Превью работы */}
               <div className="w-full aspect-video bg-[#D9D9D9] rounded-[30px] shadow-inner" />
 
-              {/* Поле с ссылкой (отображается только если ссылка есть) */}
+              {/* Поле с ссылкой */}
               {data.link && (
                 <div className="w-full text-left">
                   <span className="font-roboto text-lg opacity-60 block mb-1">Ссылка на материалы:</span>
@@ -81,6 +93,18 @@ export const MySubmissionModal = ({ isOpen, onClose }: { isOpen: boolean, onClos
                   Руководитель: <span className="font-normal opacity-70 uppercase">{data.boss}</span>
                 </p>
               </div>
+
+              {/* Кнопка для модератора — появится только если в URL есть ?role=moderator */}
+              {isModerator && (
+                <div className="w-full pt-4">
+                  <button
+                    onClick={handleRemoveFromExhibition}
+                    className="w-full py-5 border-2 border-brand-red-dark text-brand-red-dark rounded-2xl font-unbounded text-lg hover:bg-brand-red-dark hover:text-white transition-all active:scale-[0.98] uppercase tracking-wider"
+                  >
+                    Убрать с выставки
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>

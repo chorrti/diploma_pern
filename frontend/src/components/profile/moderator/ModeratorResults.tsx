@@ -1,7 +1,12 @@
+import { useState } from 'react';
 import { ModeratorContestCard } from './ModeratorContestCard';
+import { PublishResultsModal } from './PublishResultsModal';
 
 export const ModeratorResults = () => {
-  // Имитация завершенных конкурсов
+  // Состояния для модалки
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [selectedContest, setSelectedContest] = useState<{id: string, title: string} | null>(null);
+
   const resultsData = [
     {
       id: "contest-101",
@@ -21,6 +26,11 @@ export const ModeratorResults = () => {
     }
   ];
 
+  const handleOpenPublish = (id: string, title: string) => {
+    setSelectedContest({ id, title });
+    setIsPublishModalOpen(true);
+  };
+
   return (
     <div className="animate-fadeIn">
       <div className="grid grid-cols-1">
@@ -30,10 +40,18 @@ export const ModeratorResults = () => {
             {...contest}
             isResults={true}
             onAction1={() => console.log('Запуск компиляции для жюри:', contest.id)}
-            onAction2={() => console.log('Публикация результатов:', contest.id)}
+            // Здесь теперь вызываем открытие модалки
+            onAction2={() => handleOpenPublish(contest.id, contest.title)}
           />
         ))}
       </div>
+
+      {/* Сама модалка */}
+      <PublishResultsModal 
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        contestTitle={selectedContest?.title || ''}
+      />
     </div>
   );
 };
