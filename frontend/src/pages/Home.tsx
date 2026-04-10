@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { CompetitionCard } from '../components/CompetitionCard';
 import { SearchPanel } from '../components/SearchPanel';
+import type { SearchParams } from '../components/SearchPanel';
 import { CategoryFilter } from '../components/CategoryFilter';
 import { ExhibitionCard } from '../components/ExhibitionCard';
 import { Footer } from '../components/Footer';
@@ -10,6 +11,7 @@ import type { Thematic, Competition } from '../api/contests';
 import { formatDate, getFileUrl } from '../utils/formatDate';
 import { fetchExhibitionWorks, fetchExhibitionWorkDetails } from '../api/exhibition';
 import type { ExhibitionWork, ExhibitionWorkDetails } from '../api/exhibition';
+import { searchResults } from '../api/search';
 import { MySubmissionModal } from '../components/MySubmissionModal';
 
 export const Home = () => {
@@ -32,6 +34,11 @@ export const Home = () => {
     const [selectedWork, setSelectedWork] = useState<ExhibitionWorkDetails | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loadingExhibition, setLoadingExhibition] = useState(true);
+
+    // Состояния для поиска
+    const [searchResultsData, setSearchResultsData] = useState<Competition[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchPerformed, setSearchPerformed] = useState(false);
 
     // Загружаем тематики при монтировании
     useEffect(() => {
@@ -106,6 +113,30 @@ export const Home = () => {
         }
     }, [selectedCategory, thematics]);
 
+    // Сброс поиска при переключении вкладки
+    useEffect(() => {
+        if (activeTab !== 'Результаты') {
+            setSearchResultsData([]);
+            setIsSearching(false);
+            setSearchPerformed(false);
+        }
+    }, [activeTab]);
+
+    // Функция поиска
+    const handleSearch = async (params: SearchParams) => {
+        setIsSearching(true);
+        setSearchPerformed(true);
+        try {
+            const results = await searchResults(params);
+            setSearchResultsData(results);
+        } catch (error) {
+            console.error('Ошибка поиска:', error);
+            setSearchResultsData([]);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
     // Открытие модального окна с деталями работы
     const handleWorkClick = async (workId: number) => {
         try {
@@ -129,6 +160,7 @@ export const Home = () => {
         return contests.map(contest => (
             <CompetitionCard
                 key={contest.id}
+                id={contest.id}
                 status={status}
                 title={contest.name}
                 start={formatDate(contest.startDate)}
@@ -174,12 +206,28 @@ export const Home = () => {
             )}
             
             {/* Контент вкладки "Результаты" */}
-            {activeTab === 'Результаты' && <SearchPanel />}
+            {activeTab === 'Результаты' && (
+                <SearchPanel onSearch={handleSearch} />
+            )}
 
             {/* Список карточек */}
             <div className="space-y-10 mt-10">
                 {activeTab === 'Конкурсы' && renderCompetitionCards(activeContests, 'active')}
-                {activeTab === 'Результаты' && renderCompetitionCards(archivedContests, 'finished')}
+                
+                {activeTab === 'Результаты' && (
+                    <>
+                        {isSearching ? (
+                            <p className="text-center text-gray-500 py-20">Поиск...</p>
+                        ) : searchPerformed && searchResultsData.length === 0 ? (
+                            <p className="text-center text-gray-500 py-20">По вашему запросу ничего не найдено</p>
+                        ) : (
+                            renderCompetitionCards(
+                                searchResultsData.length > 0 ? searchResultsData : archivedContests, 
+                                'finished'
+                            )
+                        )}
+                    </>
+                )}
                 
                 {/* Выставка */}
                 {activeTab === 'Выставка' && (

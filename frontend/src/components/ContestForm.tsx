@@ -1,7 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
 
-export const ContestForm = ({ userRole, onSuccess }: { userRole: string | null, onSuccess: () => void }) => {
+interface ContestFormProps {
+  userRole: string | null;
+  contestId: number;  // ← добавляем id конкурса
+  onSuccess: () => void;
+}
+
+export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps) => {
   const formRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isTeacher = userRole === 'teacher';
@@ -15,6 +21,7 @@ export const ContestForm = ({ userRole, onSuccess }: { userRole: string | null, 
   const [formData, setFormData] = useState(initialState);
   const [file, setFile] = useState<File | null>(null);
   const [agreed, setAgreed] = useState({ rules: false, pdn: false });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -43,20 +50,27 @@ export const ContestForm = ({ userRole, onSuccess }: { userRole: string | null, 
     return null;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const err = validate();
     if (err) return toast.error(err);
     
-    toast.success('Заявка успешно отправлена!');
+    setIsSubmitting(true);
     
-    // Сбрасываем форму, чтобы учитель мог отправить следующую
-    setFormData(initialState);
-    setFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    // TODO: Здесь будет отправка на бэкенд
+    // const formDataToSend = new FormData();
+    // formDataToSend.append('contestId', contestId.toString());
+    // formDataToSend.append('studentData', JSON.stringify({ ... }));
+    // formDataToSend.append('file', file);
+    // await axios.post('/api/applications', formDataToSend);
     
-    // Вызываем колбэк родителя
+    // Пока просто имитируем отправку
     setTimeout(() => {
+      toast.success('Заявка успешно отправлена!');
+      setFormData(initialState);
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setIsSubmitting(false);
       onSuccess();
     }, 1500);
   };
@@ -117,8 +131,12 @@ export const ContestForm = ({ userRole, onSuccess }: { userRole: string | null, 
           <div className="pt-4 space-y-4">
             <p className="text-sm opacity-80 ml-2">Согласны на участие в выставке?</p>
             <div className="flex gap-10 ml-2">
-              <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="ex" className="accent-brand-orange" /> Да</label>
-              <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="ex" className="accent-brand-orange" /> Нет</label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="exhibition" value="yes" className="accent-brand-orange" onChange={e => e.target.checked && setFormData({...formData, exhibition: 'Да'})} /> Да
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="exhibition" value="no" className="accent-brand-orange" onChange={e => e.target.checked && setFormData({...formData, exhibition: 'Нет'})} /> Нет
+              </label>
             </div>
           </div>
 
@@ -149,7 +167,7 @@ export const ContestForm = ({ userRole, onSuccess }: { userRole: string | null, 
               onClick={() => fileInputRef.current?.click()}
               className={`w-full h-36 border-2 border-dashed rounded-xl flex flex-col items-center justify-center bg-[#EBF7F8] transition-all cursor-pointer ${file ? 'border-brand-orange' : 'border-brand-accent-teal hover:border-brand-orange'}`}
             >
-              <input type="file" ref={fileInputRef} hidden onChange={e => setFile(e.target.files?.[0] || null)} />
+              <input type="file" ref={fileInputRef} accept="image/png,image/jpeg" hidden onChange={e => setFile(e.target.files?.[0] || null)} />
               <span className="text-xs opacity-60 text-center px-4">{file ? `Выбрано: ${file.name}` : 'Допустимые форматы: png, jpg'}</span>
             </div>
           </div>
@@ -160,8 +178,12 @@ export const ContestForm = ({ userRole, onSuccess }: { userRole: string | null, 
         </div>
 
         <div className="col-span-1 md:col-span-3 flex justify-center pt-10">
-          <button type="submit" className="w-full md:max-w-[400px] py-4 bg-[#F07D58] text-white rounded-2xl font-unbounded text-lg hover:bg-opacity-90 shadow-lg transition-all">
-            Отправить заявку
+          <button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="w-full md:max-w-[400px] py-4 bg-[#F07D58] text-white rounded-2xl font-unbounded text-lg hover:bg-opacity-90 shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
           </button>
         </div>
       </form>

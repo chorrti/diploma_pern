@@ -1,3 +1,5 @@
+import api from '../api/client';
+
 /**
  * Преобразует ISO дату (YYYY-MM-DD или YYYY-MM-DDTHH:mm:ss.sssZ) в формат ДД.ММ.ГГГГ
  * @param dateString - дата от бэка, например "2025-01-15" или "2024-03-29T17:00:00.000Z"
@@ -19,8 +21,26 @@ export const formatDate = (dateString: string): string => {
  * @param filePath - путь от бэка, например "/uploads/regulations/file.pdf"
  * @returns полный URL для браузера
  */
+/**
+ * Преобразует путь к файлу в полный URL для скачивания
+ * Базовый URL берётся из настроек axios (client.defaults.baseURL)
+ */
 export const getFileUrl = (filePath: string): string => {
     if (!filePath) return '';
+    
+    // Если уже полный URL, возвращаем как есть
     if (filePath.startsWith('http')) return filePath;
-    return `http://localhost:5000${filePath}`;
-};
+    
+    // Убираем лишний слеш в начале, если есть
+    let cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+    
+    // Если путь не начинается с 'uploads/', добавляем
+    if (!cleanPath.startsWith('uploads/')) {
+        cleanPath = `uploads/${cleanPath}`;
+    }
+    
+    // Берём базовый URL из настроек axios (без /api в конце)
+    const baseURL = api.defaults.baseURL?.replace('/api', '') || 'http://localhost:5000';
+    
+    return `${baseURL}/${cleanPath}`;
+}

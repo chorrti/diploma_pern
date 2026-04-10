@@ -2,7 +2,8 @@
 {
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "create-admin": "node scripts/createAdminAndModerator.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
 const catchAsync = require('../utils/catchAsync');
+const getFileUrl = require('../utils/fileUrl');
 
 /**
  * GET /api/competitions
@@ -53,7 +54,14 @@ router.get('/', catchAsync(async (req, res) => {
     query += ` ORDER BY c.start_date ASC`;
     
     const result = await pool.query(query, params);
-    res.json(result.rows);
+    
+    // Формируем полные URL для файлов положений
+    const rows = result.rows.map(row => ({
+        ...row,
+        regulationFilePath: getFileUrl(row.regulationFilePath)
+    }));
+    
+    res.json(rows);
 }));
 
 /**
@@ -84,7 +92,10 @@ router.get('/:id', catchAsync(async (req, res) => {
         return res.status(404).json({ error: 'Конкурс не найден' });
     }
     
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    row.regulationFilePath = getFileUrl(row.regulationFilePath);
+    
+    res.json(row);
 }));
 
 module.exports = router;

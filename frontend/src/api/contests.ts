@@ -43,3 +43,11 @@ export const fetchCompetitions = async (
     const response = await api.get(url);
     return response.data;
 };
+
+/**
+ * Получить один конкурс по ID
+ */
+export const fetchCompetitionById = async (id: number): Promise<Competition> => {
+    const response = await api.get(`/competitions/${id}`);
+    return response.data;
+};

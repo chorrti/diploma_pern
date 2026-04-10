@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
 const catchAsync = require('../utils/catchAsync');
+const getFileUrl = require('../utils/fileUrl');
 
 /**
  * GET /api/exhibition
@@ -46,10 +47,10 @@ router.get('/', catchAsync(async (req, res) => {
     
     const result = await pool.query(query, params);
     
-    // Преобразуем imageUrl в полный URL
+    // Формируем полные URL для изображений
     const rows = result.rows.map(row => ({
         ...row,
-        imageUrl: row.imageUrl ? `http://localhost:5000${row.imageUrl}` : null
+        imageUrl: getFileUrl(row.imageUrl)
     }));
     
     res.json(rows);
@@ -104,9 +105,6 @@ router.get('/:id', catchAsync(async (req, res) => {
         teacherFullName = `${row.teacherFamilia} ${row.teacherName || ''} ${row.teacherOtchestvo || ''}`.trim();
     }
     
-    // Формируем полный URL для изображения
-    const imageUrl = row.imageUrl ? `http://localhost:5000${row.imageUrl}` : null;
-    
     res.json({
         id: row.id,
         author: {
@@ -125,7 +123,7 @@ router.get('/:id', catchAsync(async (req, res) => {
         work: {
             title: row.workTitle,
             description: row.workDescription,
-            imageUrl: imageUrl,
+            imageUrl: getFileUrl(row.imageUrl),
             linkUrl: row.linkUrl
         }
     });

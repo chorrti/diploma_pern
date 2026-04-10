@@ -2,23 +2,34 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 interface CardProps {
+  id: number;                    // ← добавляем id конкурса
   title: string;
   start: string;
   end: string;
   results: string;
   desc: string;
-  status: 'active' | 'finished'; // Только два четких состояния
-  regulationUrl?: string; // + добавляем ссылку на положение конкурса
+  status: 'active' | 'finished';
+  regulationUrl?: string;
 }
 
 export const CompetitionCard = ({ 
-  title, start, end, results, desc, status, regulationUrl 
+  id,                           // ← принимаем id
+  title, 
+  start, 
+  end, 
+  results, 
+  desc, 
+  status, 
+  regulationUrl 
 }: CardProps) => {
   const navigate = useNavigate();
   const isFinished = status === 'finished';
 
   const handleNavigate = (action?: 'apply' | 'results') => {
     const params = new URLSearchParams();
+    
+    // Добавляем ID конкурса в URL
+    params.append('id', id.toString());
     
     if (isFinished) {
       params.append('status', 'finished');
@@ -28,10 +39,9 @@ export const CompetitionCard = ({
     }
 
     const queryString = params.toString();
-    navigate(`/contest${queryString ? `?${queryString}` : ''}`);
+    navigate(`/contest?${queryString}`);
   };
 
-  // Обработчик клика по кнопке "Положение"
   const handleRegulationClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (regulationUrl) {
@@ -65,7 +75,6 @@ export const CompetitionCard = ({
         </div>
 
         <div className="flex flex-col gap-4 w-[300px]">
-          {/* КНОПКА: Меняется текст, цвет и действие */}
           <button 
             onClick={(e) => {
               e.stopPropagation();
@@ -80,7 +89,6 @@ export const CompetitionCard = ({
             {isFinished ? 'Результаты' : 'Подать заявку'}
           </button>
           
-          {/* Кнопка "Положение" с реальной ссылкой */}
           <button 
             onClick={handleRegulationClick}
             className={`w-full bg-transparent border py-3.5 rounded-xl font-roboto transition-all text-base tracking-wide font-normal ${
