@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const pool = require('./db/pool');
@@ -12,38 +13,23 @@ const errorHandler = require('./middleware/errorHandler');
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// РАЗДАЧА СТАТИЧЕСКИХ ФАЙЛОВ (ДОБАВЬ ЭТО)
+// Теперь файлы из папки uploads будут доступны по URL /uploads/...
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ПРОСТЕЙШИЙ ТЕСТОВЫЙ МАРШРУТ
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: 'Сервер работает!' });
-});
 
-// ТЕСТОВЫЙ МАРШРУТ ДЛЯ ПРОВЕРКИ БД
-app.get('/', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT NOW() as time');
-        res.json({ success: true, time: result.rows[0].time });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
+// Подключаем роуты
+const thematicsRoutes = require('./routes/thematics');
+const competitionsRoutes = require('./routes/competitions');
+const exhibitionRoutes = require('./routes/exhibition');
 const catchAsync = require('./utils/catchAsync');
 
-// ТЕСТ: маршрут без ошибки
-app.get('/api/test-success', catchAsync(async (req, res) => {
-    res.json({ message: 'Всё работает!' });
-}));
 
-// ТЕСТ: маршрут с ошибкой (должна уйти в errorHandler)
-app.get('/api/test-error', catchAsync(async (req, res) => {
-    throw new Error('Тестовая ошибка!');
-}));
+// РОУТЫ
+app.use('/api/thematics', thematicsRoutes);
+app.use('/api/competitions', competitionsRoutes);
 
-// ТЕСТОВЫЙ МАРШРУТ ДЛЯ ПРОВЕРКИ ЛОГГЕРА
-app.get('/api/test-logger', (req, res, next) => {
-    next(new Error('Тестовая ошибка для проверки логгера!'));
-});
+
 
 // Глобальный обработчик ошибок — ОБЯЗАТЕЛЬНО В КОНЦЕ!
 app.use(errorHandler);
