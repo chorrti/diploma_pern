@@ -26,9 +26,11 @@ const AppContent = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false); // Состояние для модалки восстановления
   
-  // 1. Изначально ставим false. Чтобы тестировать профиль, 
-  // модалка входа теперь реально переключает этот статус.
-  const [isAuth, setIsAuth] = useState(false); 
+// Вместо const [isAuth, setIsAuth] = useState(false);
+const [isAuth, setIsAuth] = useState(() => {
+  // Проверяем, есть ли токен в localStorage
+  return !!localStorage.getItem('token');
+});
 
   // Обработчик логаута
   const handleLogout = () => {

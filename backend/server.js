@@ -33,6 +33,8 @@ const competitionsRoutes = require('./routes/competitions');
 const exhibitionRoutes = require('./routes/exhibition');
 const resultsRoutes = require('./routes/results');
 const searchRoutes = require('./routes/search');
+const authRoutes = require('./routes/auth');
+const profilesRoutes = require('./routes/profiles');
 
 // РОУТЫ
 app.use('/api/thematics', thematicsRoutes);
@@ -40,6 +42,9 @@ app.use('/api/competitions', competitionsRoutes);
 app.use('/api/exhibition', exhibitionRoutes);
 app.use('/api/results', resultsRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/profiles', profilesRoutes);
+
 
 // Тестовый маршрут для проверки
 app.get('/api/health', (req, res) => {

@@ -28,7 +28,6 @@ export const AuthModal = ({ isOpen, onClose, onForgotClick, onSuccess }: AuthMod
     setIsLoading(true);
 
     try {
-      // ПУТЬ ОБНОВЛЕН: /api/auth/login
       const response = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,14 +41,12 @@ export const AuthModal = ({ isOpen, onClose, onForgotClick, onSuccess }: AuthMod
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
 
-        toast.success(`Добро пожаловать, ${data.user.name}!`);
+        toast.success(`Добро пожаловать, ${data.user.fullName || data.user.email}!`);
         
         onSuccess(); // Закрываем модалку через родительский компонент
         
-        // Если зашел админ, можно сразу перекинуть в профиль
-        if (data.user.role === 'админ') {
-          navigate('/profile');
-        }
+        // Перенаправляем в профиль (App.tsx сам обработает редирект)
+        navigate('/profile');
       } else {
         toast.error(data.error || "Неверный логин или пароль");
       }
@@ -121,7 +118,7 @@ export const AuthModal = ({ isOpen, onClose, onForgotClick, onSuccess }: AuthMod
                     className="absolute right-5 top-1/2 -translate-y-1/2 hover:opacity-70 transition-opacity"
                   >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="#374957"/>
+                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="#374957"/>
                     </svg>
                   </button>
                 </div>
@@ -131,7 +128,7 @@ export const AuthModal = ({ isOpen, onClose, onForgotClick, onSuccess }: AuthMod
                 <button 
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-brand-dark-teal text-white py-4 rounded-2xl font-unbounded text-lg hover:bg-opacity-90 transition-all active:scale-[0.98] disabled:bg-gray-400"
+                  className="w-full bg-brand-dark-teal text-white py-4 rounded-2xl font-unbounded text-lg hover:bg-opacity-90 transition-all active:scale-[0.98] disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isLoading ? "Вход..." : "Войти"}
                 </button>

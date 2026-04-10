@@ -22,6 +22,7 @@ const ADMIN_DATA = {
     email: 'admin@example.com',
     phone: '+7 (000) 000-00-00',
     city: 'Москва',
+    birth_date: '1985-03-15',
     organization: 'Платформа'
 };
 
@@ -35,6 +36,7 @@ const MODERATOR_DATA = {
     email: 'moderator@example.com',
     phone: '+7 (000) 000-00-01',
     city: 'Москва',
+    birth_date: '1985-03-15',
     organization: 'Платформа'
 };
 

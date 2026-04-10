@@ -13,8 +13,12 @@ import { ModeratorResults } from '../components/profile/moderator/ModeratorResul
 import { ModeratorExhibition } from '../components/profile/moderator/ModeratorExhibition';
 import { ModeratorSettings } from '../components/profile/moderator/ModeratorSettings';
 
-// АДМИН (Подключаем наш новый компонент)
+// АДМИН
 import { AdminProfile } from '../components/profile/admin/AdminProfile';
+
+// API
+import { fetchMyProfile } from '../api/profile';
+import type { ProfileData } from '../api/profile';
 
 interface ProfilePageProps {
   onLogout: () => void;
@@ -24,6 +28,11 @@ export const ProfilePage = ({ onLogout }: ProfilePageProps) => {
   const [searchParams] = useSearchParams();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
+  // Состояние для данных профиля
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const role = searchParams.get('role') || 'student';
   const isViewingAsTeacher = searchParams.get('viewAs') === 'teacher';
 
@@ -31,17 +40,44 @@ export const ProfilePage = ({ onLogout }: ProfilePageProps) => {
   const isModerator = role === 'moderator';
   const isAdmin = role === 'admin';
 
+  // Загружаем реальные данные профиля
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchMyProfile();
+        setProfile(data);
+        setError(null);
+      } catch (err) {
+        console.error('Ошибка загрузки профиля:', err);
+        setError('Не удалось загрузить данные профиля');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadProfile();
+  }, []);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [searchParams]);
 
-  const userData = {
-    fio: "Иванов Иван Иванович",
-    birthDate: "01.01.1985",
-    city: "Самара",
-    email: "user@school.ru",
-    phone: "+7 (999) 123-45-67",
-    organization: "МБОУ СОШ №1"
+  // Подготовка данных для ProfileInfo
+  const userData = profile ? {
+    fio: profile.fullName,
+    birthDate: profile.birthDate,
+    city: profile.city,
+    email: profile.email,
+    phone: profile.phone,
+    organization: profile.organization
+  } : {
+    fio: "",
+    birthDate: "",
+    city: "",
+    email: "",
+    phone: "",
+    organization: ""
   };
 
   const [activeModTab, setActiveModTab] = useState('Конкурсы');
@@ -54,6 +90,30 @@ export const ProfilePage = ({ onLogout }: ProfilePageProps) => {
     if (isModerator) return 'модератор';
     return 'ученик';
   };
+
+  // Показываем загрузку
+  if (loading) {
+    return (
+      <div className="w-full max-w-[1200px] mx-auto px-6 py-10 text-center">
+        <p className="font-roboto text-brand-dark-teal text-lg">Загрузка профиля...</p>
+      </div>
+    );
+  }
+
+  // Показываем ошибку
+  if (error || !profile) {
+    return (
+      <div className="w-full max-w-[1200px] mx-auto px-6 py-10 text-center">
+        <p className="font-roboto text-brand-orange text-lg">{error || 'Профиль не найден'}</p>
+        <button 
+          onClick={() => window.location.href = '/'}
+          className="mt-4 border border-brand-dark-teal text-brand-dark-teal px-6 py-2 rounded-xl hover:bg-brand-dark-teal hover:text-white transition-all"
+        >
+          Вернуться на главную
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-[1200px] mx-auto px-6 py-10 animate-fadeIn min-h-screen font-normal">
