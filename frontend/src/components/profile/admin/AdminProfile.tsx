@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AdminRequests } from './AdminRequests'; // Импортируем готовый список заявок
 import { AdminUsersList } from './AdminUsersList'; 
 
+
 export const AdminProfile = () => {
   const [activeTab, setActiveTab] = useState('Заявки на регистрацию');
 

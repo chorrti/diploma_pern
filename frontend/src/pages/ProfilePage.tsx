@@ -33,12 +33,8 @@ export const ProfilePage = ({ onLogout }: ProfilePageProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const role = searchParams.get('role') || 'student';
+  // Роль берём ТОЛЬКО из данных профиля, а не из URL
   const isViewingAsTeacher = searchParams.get('viewAs') === 'teacher';
-
-  const isTeacher = role === 'teacher';
-  const isModerator = role === 'moderator';
-  const isAdmin = role === 'admin';
 
   // Загружаем реальные данные профиля
   useEffect(() => {
@@ -85,9 +81,10 @@ export const ProfilePage = ({ onLogout }: ProfilePageProps) => {
 
   const getRoleLabel = () => {
     if (isViewingAsTeacher) return 'просмотр ученика';
-    if (isAdmin) return 'админ';
-    if (isTeacher) return 'учитель';
-    if (isModerator) return 'модератор';
+    if (!profile) return 'загрузка...';
+    if (profile.role === 'Админ') return 'админ';
+    if (profile.role === 'Модератор') return 'модератор';
+    if (profile.role === 'Учитель') return 'учитель';
     return 'ученик';
   };
 
@@ -129,10 +126,10 @@ export const ProfilePage = ({ onLogout }: ProfilePageProps) => {
 
       <ProfileInfo data={userData} />
 
-      {/* ВЫБОР КОНТЕНТА ПО РОЛИ */}
-      {isAdmin ? (
+      {/* ВЫБОР КОНТЕНТА ПО РОЛИ ИЗ ПРОФИЛЯ */}
+      {profile.role === 'Админ' ? (
         <AdminProfile />
-      ) : isModerator ? (
+      ) : profile.role === 'Модератор' ? (
         <>
           <div className="relative w-full bg-brand-peach rounded-full p-1 flex mb-12 overflow-hidden max-w-[900px] mx-auto shadow-sm">
             {modTabs.map((tab) => (
@@ -155,8 +152,10 @@ export const ProfilePage = ({ onLogout }: ProfilePageProps) => {
             </motion.div>
           </AnimatePresence>
         </>
+      ) : (profile.role === 'Учитель' && !isViewingAsTeacher) ? (
+        <TeacherProfile />
       ) : (
-        isTeacher && !isViewingAsTeacher ? <TeacherProfile /> : <StudentProfile />
+        <StudentProfile />
       )}
 
       <ConfirmModal 

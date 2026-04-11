@@ -35,6 +35,8 @@ const resultsRoutes = require('./routes/results');
 const searchRoutes = require('./routes/search');
 const authRoutes = require('./routes/auth');
 const profilesRoutes = require('./routes/profiles');
+const registrationRoutes = require('./routes/registration');
+const adminRoutes = require('./routes/admin');
 
 // РОУТЫ
 app.use('/api/thematics', thematicsRoutes);
@@ -44,12 +46,8 @@ app.use('/api/results', resultsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profilesRoutes);
-
-
-// Тестовый маршрут для проверки
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', baseUrl: BASE_URL });
-});
+app.use('/api/register', registrationRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Глобальный обработчик ошибок — в конце!
 app.use(errorHandler);

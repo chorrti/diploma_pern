@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_BASE_URL } from './config';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -18,19 +19,6 @@ api.interceptors.request.use(
         return config;
     },
     (error) => Promise.reject(error)
-);
-
-// Перехватчик ответов — обрабатываем ошибку 401 (неавторизован)
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/';
-        }
-        return Promise.reject(error);
-    }
 );
 
 export default api;

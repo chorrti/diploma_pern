@@ -1,6 +1,16 @@
 interface AdminUserCardProps {
-  user: any;
-  onDelete: () => void; // Теперь просто уведомляем родителя о клике
+  user: {
+    id: string;
+    fio: { last: string; first: string; middle: string };
+    email: string;
+    phone: string;
+    birthDate: string;
+    city: string;
+    organization: string;
+    role: string;
+    login: string | null;
+  };
+  onDelete: () => void;
 }
 
 export const AdminUserCard = ({ user, onDelete }: AdminUserCardProps) => {
@@ -8,7 +18,7 @@ export const AdminUserCard = ({ user, onDelete }: AdminUserCardProps) => {
     <div className="flex flex-col gap-1 w-full">
       <span className="text-[12px] font-roboto ml-2 text-[#49A0A5]">{label}</span>
       <div className="bg-white rounded-[10px] h-[40px] px-4 flex items-center font-roboto text-brand-dark-teal shadow-sm border border-[#49A0A5]/10">
-        {value}
+        {value || '—'}
       </div>
     </div>
   );
@@ -28,6 +38,7 @@ export const AdminUserCard = ({ user, onDelete }: AdminUserCardProps) => {
           <Field label="Телефон" value={user.phone} />
           <Field label="Город" value={user.city} />
           <Field label="Организация" value={user.organization} />
+          {user.login && <Field label="Логин" value={user.login} />}
         </div>
       </div>
 
@@ -36,7 +47,7 @@ export const AdminUserCard = ({ user, onDelete }: AdminUserCardProps) => {
           type="button"
           onClick={(e) => {
             e.preventDefault();
-            onDelete(); // Запускает открытие модалки в AdminUsersList
+            onDelete();
           }}
           className="w-full h-[55px] border-2 border-[#49A0A5] bg-white text-[#49A0A5] rounded-[15px] font-roboto text-lg uppercase hover:bg-red-500 hover:border-red-500 hover:text-white transition-all shadow-sm active:scale-95"
         >

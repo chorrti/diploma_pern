@@ -2,64 +2,83 @@ import { useState, useEffect } from 'react';
 import { AdminSearchBar } from './AdminSearchBar';
 import { AdminUserCard } from './AdminUserCard';
 import { ConfirmModal } from '../../ConfirmModal';
+import { toast } from 'react-hot-toast';
+import api from '../../../api/client';
 
 export const AdminUsersList = () => {
-  const [users, setUsers] = useState<any[]>([]); // Тут будут данные из БД
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // ИМИТАЦИЯ ПОДГРУЗКИ ИЗ БД
+  const fetchUsers = async (search?: string) => {
+    setLoading(true);
+    try {
+      const url = search ? `/admin/users?search=${encodeURIComponent(search)}` : '/admin/users';
+      const response = await api.get(url);
+      setUsers(response.data);
+    } catch (err: any) {
+      console.error('Ошибка загрузки:', err.response?.data);
+      toast.error('Ошибка загрузки пользователей');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // В будущем: fetch('/api/users').then(res => res.json()).then(data => setUsers(data))
-    const mockData = [
-      { 
-        id: '1', 
-        fio: { last: 'Иванов', first: 'Иван', middle: 'Иванович' }, 
-        email: 'ivan@test.ru', 
-        role: 'Учитель',
-        birthDate: '01.01.1980',
-        phone: '+7 (999) 000-11-22',
-        city: 'Москва',
-        organization: 'МБОУ СОШ №1500'
-      },
-      { 
-        id: '2', 
-        fio: { last: 'Сидоров', first: 'Сидор', middle: 'Сидорович' }, 
-        email: 'sidor@test.ru', 
-        role: 'Ученик',
-        birthDate: '10.05.2010',
-        phone: '+7 (999) 444-55-66',
-        city: 'Самара',
-        organization: 'МАОУ Лицей №1'
-      }
-    ];
-    setUsers(mockData);
+    fetchUsers();
   }, []);
 
-  // Просто открываем модалку для верстки
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+    fetchUsers(value);
+  };
+
   const openDeleteModal = (id: string) => {
     setSelectedUserId(id);
     setIsModalOpen(true);
   };
 
-  const handleConfirmDelete = () => {
-    console.log("Тут будет запрос к БД: DELETE /api/users/" + selectedUserId);
-    // Для фронта — просто закрываем
-    setIsModalOpen(false);
+  const handleConfirmDelete = async () => {
+    if (!selectedUserId) return;
+    
+    try {
+      const response = await api.delete(`/admin/users/${selectedUserId}`);
+      console.log('Удаление успешно:', response.data);
+      toast.success('Пользователь удалён');
+      await fetchUsers(searchTerm);
+    } catch (err: any) {
+      console.error('Ошибка удаления:', err.response?.data);
+      toast.error(err.response?.data?.error || 'Ошибка при удалении');
+    } finally {
+      setIsModalOpen(false);
+      setSelectedUserId(null);
+    }
   };
+
+  if (loading) {
+    return <div className="text-center py-20 font-roboto">Загрузка...</div>;
+  }
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-10 pb-20">
-      <AdminSearchBar onSearch={(v) => console.log('Поиск:', v)} />
+      <AdminSearchBar onSearch={handleSearch} />
 
       <div className="space-y-10">
-        {users.map((u) => (
-          <AdminUserCard 
-            key={u.id} 
-            user={u} 
-            onDelete={() => openDeleteModal(u.id)} // Важно: вызываем функцию открытия
-          />
-        ))}
+        {users.length === 0 ? (
+          <div className="text-center py-20 text-gray-500 font-roboto">
+            Пользователи не найдены
+          </div>
+        ) : (
+          users.map((u) => (
+            <AdminUserCard 
+              key={u.id} 
+              user={u} 
+              onDelete={() => openDeleteModal(u.id)}
+            />
+          ))
+        )}
       </div>
 
       <ConfirmModal 

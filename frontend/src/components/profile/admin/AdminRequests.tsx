@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AdminRequestCard } from './AdminRequestCard';
 import { ConfirmModal } from '../../ConfirmModal';
 import { toast } from 'react-hot-toast';
+import api from '../../../api/client';
 
 export const AdminRequests = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -11,12 +12,8 @@ export const AdminRequests = () => {
 
   const fetchRequests = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/register/all', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      setRequests(data);
+      const response = await api.get('/register/all');
+      setRequests(response.data);
     } catch (err) {
       toast.error('Ошибка загрузки');
     } finally {
@@ -27,34 +24,33 @@ export const AdminRequests = () => {
   useEffect(() => { fetchRequests(); }, []);
 
   const handleApprove = async (id: number, creds: any) => {
+    
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/register/approve/${id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(creds)
+      const response = await api.post(`/register/approve/${id}`, {
+        role: creds.role,
+        login: creds.login,
+        password: creds.password,
+        hasProfile: creds.hasProfile,
+        editedData: creds.editedData
       });
-      if (response.ok) {
+
+      
+      if (response.status === 200) {
         setRequests(prev => prev.filter(r => r.id !== id));
         toast.success('Заявка обработана');
       }
-    } catch (err) {
-      toast.error('Ошибка сервера');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Ошибка сервера');
     }
   };
 
   const handleReject = async () => {
     if (!selectedId) return;
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/register/reject/${selectedId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        setRequests(prev => prev.filter(r => r.id !== selectedId));
-        toast.success('Заявка отклонена');
-      }
+      await api.delete(`/register/reject/${selectedId}`);
+      setRequests(prev => prev.filter(r => r.id !== selectedId));
+      toast.success('Заявка отклонена');
+      setIsConfirmOpen(false);
     } catch (err) {
       toast.error('Ошибка');
     }

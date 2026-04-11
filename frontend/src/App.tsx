@@ -12,6 +12,8 @@ import { Contacts } from './pages/Contacts';
 import { CreateStudent } from './pages/CreateStudent';
 import { ContestEditorPage } from './pages/ContestEditorPage';
 
+import { Toaster } from 'react-hot-toast';
+
 // Вспомогательный компонент для автоматической прокрутки вверх при переходе по ссылкам
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -103,6 +105,7 @@ const [isAuth, setIsAuth] = useState(() => {
 function App() {
   return (
     <Router>
+       <Toaster position="top-center" />
       <AppContent />
     </Router>
   );
