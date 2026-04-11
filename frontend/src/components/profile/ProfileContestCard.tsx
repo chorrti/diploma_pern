@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 interface ProfileCardProps {
+  id: number;  // ← добавляем id конкурса
   title: string;
   start: string;
   end: string;
@@ -13,14 +14,27 @@ interface ProfileCardProps {
 }
 
 export const ProfileContestCard = ({ 
-  title, start, end, results, desc, variant, diploma, onOpenSubmission 
+  id,
+  title, 
+  start, 
+  end, 
+  results, 
+  desc, 
+  variant, 
+  diploma, 
+  onOpenSubmission 
 }: ProfileCardProps) => {
   const navigate = useNavigate();
   const isPortfolio = variant === 'portfolio';
 
   const handleNavigate = () => {
-    const path = isPortfolio ? '/contest?status=finished' : '/contest';
-    navigate(path);
+    // Передаём ID конкурса в URL
+    const params = new URLSearchParams();
+    params.append('id', id.toString());
+    if (isPortfolio) {
+      params.append('status', 'finished');
+    }
+    navigate(`/contest?${params.toString()}`);
   };
 
   return (

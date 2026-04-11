@@ -37,6 +37,7 @@ const authRoutes = require('./routes/auth');
 const profilesRoutes = require('./routes/profiles');
 const registrationRoutes = require('./routes/registration');
 const adminRoutes = require('./routes/admin');
+const applicationsRoutes = require('./routes/applications');
 
 // РОУТЫ
 app.use('/api/thematics', thematicsRoutes);
@@ -48,6 +49,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profilesRoutes);
 app.use('/api/register', registrationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/applications', applicationsRoutes);
 
 // Глобальный обработчик ошибок — в конце!
 app.use(errorHandler);
