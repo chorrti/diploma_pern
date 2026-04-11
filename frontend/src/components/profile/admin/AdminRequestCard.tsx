@@ -54,7 +54,7 @@ export const AdminRequestCard = ({ hasProfile, userData, onApprove, onReject }: 
         border: 'border-[#F07D58]',
         text: 'text-[#F07D58]',
         btn: 'border-[#F07D58] text-[#F07D58] hover:bg-[#F07D58] hover:text-white',
-        title: 'У этого пользователя уже есть профиль (ссылка на профиль)'
+        title: 'У этого пользователя уже есть профиль'
       }
     : {
         bg: 'bg-[#EBF7F8]',

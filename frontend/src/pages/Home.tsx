@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
 import { CompetitionCard } from '../components/CompetitionCard';
 import { SearchPanel } from '../components/SearchPanel';
 import type { SearchParams } from '../components/SearchPanel';
@@ -14,7 +15,11 @@ import type { ExhibitionWork, ExhibitionWorkDetails } from '../api/exhibition';
 import { searchResults } from '../api/search';
 import { MySubmissionModal } from '../components/MySubmissionModal';
 
-export const Home = () => {
+interface HomeProps {
+  userRole?: string | null;  // ← добавляем пропс userRole
+}
+
+export const Home = ({ userRole }: HomeProps) => {
     const [activeTab, setActiveTab] = useState('Конкурсы');
     const tabs = ['Конкурсы', 'Результаты', 'Выставка'];
     
@@ -168,12 +173,17 @@ export const Home = () => {
                 results={formatDate(contest.resultsDate)}
                 desc={contest.description}
                 regulationUrl={getFileUrl(contest.regulationFilePath)}
+                userRole={userRole}  // ← передаём роль в карточку
             />
         ));
     };
 
     return (
         <div className="max-w-[1200px] mx-auto px-6 font-normal">
+            <Helmet>
+                <title>Главная | Платформа конкурсов</title>
+            </Helmet>
+
             {/* Вкладки */}
             <div className="relative w-full bg-brand-peach rounded-full p-1 flex mb-10 overflow-hidden">
                 {tabs.map((tab) => (

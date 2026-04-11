@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 interface CardProps {
-  id: number;                    // ← добавляем id конкурса
+  id: number;
   title: string;
   start: string;
   end: string;
@@ -10,36 +11,58 @@ interface CardProps {
   desc: string;
   status: 'active' | 'finished';
   regulationUrl?: string;
+  userRole?: string | null;  // ← добавляем роль пользователя
 }
 
 export const CompetitionCard = ({ 
-  id,                           // ← принимаем id
+  id,
   title, 
   start, 
   end, 
   results, 
   desc, 
   status, 
-  regulationUrl 
+  regulationUrl,
+  userRole
 }: CardProps) => {
   const navigate = useNavigate();
   const isFinished = status === 'finished';
 
-  const handleNavigate = (action?: 'apply' | 'results') => {
-    const params = new URLSearchParams();
+  const canApply = () => {
+    if (!userRole) return false;
+    return userRole === 'Ученик' || userRole === 'Учитель';
+  };
+
+  const handleApplyClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     
-    // Добавляем ID конкурса в URL
+    if (!userRole) {
+      toast.error('Для подачи заявки необходимо войти в систему');
+      return;
+    }
+    
+    if (!canApply()) {
+      toast.error('Вы не можете подать заявку. Нужна роль "Ученик" или "Учитель"');
+      return;
+    }
+    
+    // Открываем страницу конкурса с формой заявки
+    const params = new URLSearchParams();
+    params.append('id', id.toString());
+    params.append('action', 'apply');
+    navigate(`/contest?${params.toString()}`);
+  };
+
+  const handleNavigate = (action?: 'results') => {
+    const params = new URLSearchParams();
     params.append('id', id.toString());
     
     if (isFinished) {
       params.append('status', 'finished');
       if (action === 'results') params.append('action', 'results');
-    } else {
-      if (action === 'apply') params.append('action', 'apply');
     }
 
-    const queryString = params.toString();
-    navigate(`/contest?${queryString}`);
+    navigate(`/contest?${params.toString()}`);
   };
 
   const handleRegulationClick = (e: React.MouseEvent) => {
@@ -76,10 +99,7 @@ export const CompetitionCard = ({
 
         <div className="flex flex-col gap-4 w-[300px]">
           <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNavigate(isFinished ? 'results' : 'apply');
-            }}
+            onClick={isFinished ? () => handleNavigate('results') : handleApplyClick}
             className={`w-full bg-transparent border py-3.5 rounded-xl font-roboto transition-all text-base tracking-wide font-normal ${
               isFinished 
                 ? 'border-brand-red-dark text-brand-red-dark hover:bg-brand-red-dark hover:text-white' 

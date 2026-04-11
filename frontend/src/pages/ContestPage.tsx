@@ -1,24 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import { toast } from 'react-hot-toast';
 import { ResultsModal } from '../components/ResultsModal';
 import { ContestForm } from '../components/ContestForm';
 import { MySubmissionModal } from '../components/MySubmissionModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { fetchCompetitionById } from '../api/contests';
-import type {  Competition  } from '../api/contests';
+import type { Competition } from '../api/contests';
 import { formatDate, getFileUrl } from '../utils/formatDate';
 
-export const ContestPage = () => {
+interface ContestPageProps {
+  userRole: string | null;
+}
+
+export const ContestPage = ({ userRole }: ContestPageProps) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  // Получаем параметры из URL
   const contestId = searchParams.get('id');
-  const userRole = searchParams.get('role');
   const status = searchParams.get('status');
   const action = searchParams.get('action');
 
-  // Состояния
   const [contest, setContest] = useState<Competition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +31,31 @@ export const ContestPage = () => {
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
-  // Загружаем данные конкурса
+  // Функция проверки, может ли пользователь подать заявку
+  const canApply = () => {
+    if (!userRole) return false;
+    return userRole === 'Ученик' || userRole === 'Учитель';
+  };
+
+  // Обработчик нажатия на кнопку "Подать заявку"
+  const handleApplyClick = () => {
+    if (!userRole) {
+      toast.error('Для подачи заявки необходимо войти в систему');
+      return;
+    }
+    
+    if (!canApply()) {
+      toast.error('Вы не можете подать заявку. Нужна роль "Ученик" или "Учитель"');
+      return;
+    }
+    
+    if (hasSubmitted) {
+      setIsSubmissionModalOpen(true);
+    } else {
+      setIsFormOpen(true);
+    }
+  };
+
   useEffect(() => {
     if (!contestId) {
       setError('ID конкурса не указан');
@@ -51,34 +78,49 @@ export const ContestPage = () => {
     loadContest();
   }, [contestId]);
 
-  // Обработка параметров URL после загрузки конкурса
   useEffect(() => {
     if (!contest) return;
     
-    if (action === 'apply') setIsFormOpen(true);
+    if (action === 'apply') {
+      if (!userRole) {
+        toast.error('Для подачи заявки необходимо войти в систему');
+      } else if (!canApply()) {
+        toast.error('Вы не можете подать заявку. Нужна роль "Ученик" или "Учитель"');
+      } else {
+        setIsFormOpen(true);
+      }
+    }
     if (action === 'results') setIsResultsModalOpen(true);
     if (action === 'view') setIsSubmissionModalOpen(true);
-  }, [action, contest]);
+  }, [action, contest, userRole]);
 
   const isFinished = status === 'finished' || contest?.status === 'archived';
-  const isStudent = userRole === 'student' || !userRole;
-  const isModerator = userRole === 'moderator';
+  const isModerator = userRole === 'Модератор';
 
   const handleDeleteConfirm = () => {
     console.log('Конкурс удален', contestId);
     navigate('/');
   };
 
-  // Открытие положения конкурса
   const handleRegulationClick = () => {
     if (contest?.regulationFilePath) {
       window.open(getFileUrl(contest.regulationFilePath), '_blank');
     }
   };
 
+  // Определяем заголовок для Helmet
+  const pageTitle = loading 
+    ? 'Загрузка... | Платформа конкурсов' 
+    : error || !contest 
+      ? 'Конкурс не найден | Платформа конкурсов' 
+      : `${contest.name} | Платформа конкурсов`;
+
   if (loading) {
     return (
       <div className="w-full max-w-[1200px] mx-auto px-6 py-10">
+        <Helmet>
+          <title>{pageTitle}</title>
+        </Helmet>
         <p className="text-center text-gray-500">Загрузка...</p>
       </div>
     );
@@ -87,6 +129,9 @@ export const ContestPage = () => {
   if (error || !contest) {
     return (
       <div className="w-full max-w-[1200px] mx-auto px-6 py-10">
+        <Helmet>
+          <title>{pageTitle}</title>
+        </Helmet>
         <p className="text-center text-red-500">{error || 'Конкурс не найден'}</p>
         <div className="flex justify-center mt-6">
           <button 
@@ -102,6 +147,10 @@ export const ContestPage = () => {
 
   return (
     <div className="w-full max-w-[1200px] mx-auto px-6 py-10 animate-fadeIn font-normal">
+      <Helmet>
+        <title>{pageTitle}</title>
+      </Helmet>
+
       <h1 className="font-unbounded text-brand-dark-teal text-3xl md:text-4xl leading-tight mb-10">
         {contest.name}
       </h1>
@@ -153,12 +202,12 @@ export const ContestPage = () => {
                   </>
                 ) : (
                   <button 
-                    onClick={() => isStudent && hasSubmitted ? setIsSubmissionModalOpen(true) : setIsFormOpen(true)}
+                    onClick={handleApplyClick}
                     className={`w-full md:flex-1 py-4 text-white rounded-2xl font-unbounded text-lg shadow-lg transition-all font-normal ${
-                      isStudent && hasSubmitted ? 'bg-[#F07D58]' : 'bg-[#3D828A]'
+                      userRole && hasSubmitted ? 'bg-[#F07D58]' : 'bg-[#3D828A]'
                     }`}
                   >
-                    {isStudent && hasSubmitted ? 'Моя заявка' : 'Подать заявку'}
+                    {userRole && hasSubmitted ? 'Моя заявка' : 'Подать заявку'}
                   </button>
                 )}
               </>
@@ -197,7 +246,7 @@ export const ContestPage = () => {
         isOpen={isResultsModalOpen} 
         onClose={() => setIsResultsModalOpen(false)} 
         contestTitle={contest.name} 
-        competitionId={contest.id}   // ← передаём ID конкурса
+        competitionId={contest.id}
       />
       
       <MySubmissionModal 

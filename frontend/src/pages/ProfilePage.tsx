@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
 
 import { StudentProfile } from '../components/profile/StudentProfile';
 import { TeacherProfile } from '../components/profile/TeacherProfile';
@@ -92,6 +93,9 @@ export const ProfilePage = ({ onLogout }: ProfilePageProps) => {
   if (loading) {
     return (
       <div className="w-full max-w-[1200px] mx-auto px-6 py-10 text-center">
+        <Helmet>
+          <title>Личный кабинет | Платформа конкурсов</title>
+        </Helmet>
         <p className="font-roboto text-brand-dark-teal text-lg">Загрузка профиля...</p>
       </div>
     );
@@ -101,6 +105,9 @@ export const ProfilePage = ({ onLogout }: ProfilePageProps) => {
   if (error || !profile) {
     return (
       <div className="w-full max-w-[1200px] mx-auto px-6 py-10 text-center">
+        <Helmet>
+          <title>Личный кабинет | Платформа конкурсов</title>
+        </Helmet>
         <p className="font-roboto text-brand-orange text-lg">{error || 'Профиль не найден'}</p>
         <button 
           onClick={() => window.location.href = '/'}
@@ -114,6 +121,10 @@ export const ProfilePage = ({ onLogout }: ProfilePageProps) => {
 
   return (
     <div className="w-full max-w-[1200px] mx-auto px-6 py-10 animate-fadeIn min-h-screen font-normal">
+      <Helmet>
+        <title>Личный кабинет | Платформа конкурсов</title>
+      </Helmet>
+
       {/* ШАПКА */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
         <h1 className="font-unbounded text-brand-dark-teal text-4xl uppercase">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'react-hot-toast';
+import { Helmet } from 'react-helmet-async';
 import api from '../api/client';
 
 // Словарь для перевода текстовой роли в ID из базы данных
@@ -26,7 +27,6 @@ export const Registration = () => {
     role: rolesFromDB[0]
   });
 
-  // Превращаем "ДД.ММ.ГГГГ" в "ГГГГ-ММ-ДД" для PostgreSQL
   const formatDateForDB = (dateStr: string) => {
     const [day, month, year] = dateStr.split('.');
     return `${year}-${month}-${day}`;
@@ -117,7 +117,12 @@ export const Registration = () => {
 
   return (
     <div className="w-full max-w-[1200px] mx-auto px-6 py-10 relative">
+      <Helmet>
+        <title>Регистрация | Платформа конкурсов</title>
+      </Helmet>
+      
       <Toaster />
+      
       <form className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8" onSubmit={handleSubmit} noValidate>
         <div className="space-y-8">
           <div className="space-y-2">
@@ -173,6 +178,7 @@ export const Registration = () => {
           </div>
         </div>
       </form>
+      
       <p className="mt-16 text-[#D94F31] font-roboto text-lg max-w-[1000px]">
         После подтверждения заявки администратором на Вашу почту будут высланы логин и пароль от вашего аккаунта.
       </p>

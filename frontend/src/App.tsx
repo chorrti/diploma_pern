@@ -11,7 +11,6 @@ import { Regulations } from './pages/Regulations';
 import { Contacts } from './pages/Contacts';
 import { CreateStudent } from './pages/CreateStudent';
 import { ContestEditorPage } from './pages/ContestEditorPage';
-
 import { Toaster } from 'react-hot-toast';
 
 // Вспомогательный компонент для автоматической прокрутки вверх при переходе по ссылкам
@@ -26,33 +25,36 @@ const ScrollToTop = () => {
 const AppContent = () => {
   const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false); // Состояние для модалки восстановления
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   
-// Вместо const [isAuth, setIsAuth] = useState(false);
-const [isAuth, setIsAuth] = useState(() => {
-  // Проверяем, есть ли токен в localStorage
-  return !!localStorage.getItem('token');
-});
+  const [isAuth, setIsAuth] = useState(() => {
+    return !!localStorage.getItem('token');
+  });
+  
+  // Храним данные пользователя
+  const [user, setUser] = useState<{ role: string; fullName: string } | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
-  // Обработчик логаута
   const handleLogout = () => {
-    // Сначала меняем состояние
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setIsAuth(false);
-    // Затем редирект на главную
-    navigate('/'); 
-    console.log('Пользователь вышел из системы');
+    setUser(null);
+    navigate('/');
   };
 
-  // Обработчик успешного входа
   const handleLoginSuccess = () => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
     setIsAuth(true);
     setIsAuthModalOpen(false);
-    // После логина обычно ведем в профиль
     navigate('/profile');
-    console.log('Вход выполнен успешно');
   };
 
-  // Функция для открытия восстановления пароля из окна авторизации
   const handleOpenForgot = () => {
     setIsAuthModalOpen(false);
     setIsForgotModalOpen(true);
@@ -69,17 +71,13 @@ const [isAuth, setIsAuth] = useState(() => {
       
       <main className="flex-grow">
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Home userRole={user?.role || null} />} />
           <Route path="/registration" element={<Registration />} />
-          <Route path="/contest" element={<ContestPage />} />
+          <Route path="/contest" element={<ContestPage userRole={user?.role || null} />} />
           <Route path="/regulations" element={<Regulations />} />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/create-student" element={<CreateStudent />} />
           <Route path="/contest/edit" element={<ContestEditorPage />} />
-          
-          {/* Страница профиля. Если isAuth false, 
-              она всё равно откроется (для вёрстки), 
-              но кнопка в хедере будет "Войти" */}
           <Route 
             path="/profile" 
             element={<ProfilePage onLogout={handleLogout} />} 
@@ -105,7 +103,7 @@ const [isAuth, setIsAuth] = useState(() => {
 function App() {
   return (
     <Router>
-       <Toaster position="top-center" />
+      <Toaster position="top-center" />
       <AppContent />
     </Router>
   );

@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../db/pool');
 const catchAsync = require('../utils/catchAsync');
+const { generateRandomPassword, sendEmail } = require('../utils/helpers');
 
 /**
  * POST /api/auth/login
@@ -93,6 +94,67 @@ router.post('/login', catchAsync(async (req, res) => {
             email: user.email || login
         }
     });
+}));
+
+/**
+ * POST /api/auth/forgot-password
+ * Восстановление пароля по email
+ * Тело запроса: { email }
+ */
+router.post('/forgot-password', catchAsync(async (req, res) => {
+    const { email } = req.body;
+    
+    if (!email) {
+        return res.status(400).json({ error: 'Email обязателен' });
+    }
+    
+    // 1. Ищем профиль по email
+    const profileResult = await pool.query(`
+        SELECT 
+            p.id as profile_id,
+            p.familia,
+            p.name,
+            p.otchestvo,
+            p.email,
+            u.id as user_id,
+            u.login
+        FROM profiles p
+        JOIN users u ON u.id = p.user_id
+        WHERE p.email = $1 AND p.is_deleted = false
+    `, [email]);
+    
+    if (profileResult.rows.length === 0) {
+        // Не говорим, что email не найден (безопасность)
+        return res.json({ message: 'Если такой email существует, инструкции отправлены' });
+    }
+    
+    const profile = profileResult.rows[0];
+    
+    // 2. Генерируем новый пароль
+    const newPassword = generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // 3. Обновляем пароль в БД
+    await pool.query(`
+        UPDATE users 
+        SET password_hash = $1 
+        WHERE id = $2
+    `, [hashedPassword, profile.user_id]);
+    
+    // 4. Формируем полное ФИО
+    const fullName = `${profile.familia} ${profile.name} ${profile.otchestvo || ''}`.trim();
+    
+    // 5. Отправляем письмо
+    const emailText = `Здравствуйте, ${fullName}!
+
+        Вы запросили восстановление доступа к аккаунту на платформе "Портфель".
+
+        Логин: ${profile.login}
+        Новый пароль: ${newPassword}`;
+    
+    await sendEmail(email, 'Восстановление пароля', emailText);
+    
+    res.json({ message: 'Если такой email существует, инструкции отправлены' });
 }));
 
 module.exports = router;
