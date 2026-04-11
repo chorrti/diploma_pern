@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, Toaster } from 'react-hot-toast';
+import api from '../api/client';
 
 // Словарь для перевода текстовой роли в ID из базы данных
 const roleMapping: { [key: string]: number } = {
@@ -104,23 +105,13 @@ export const Registration = () => {
     };
 
     try {
-      // ПУТЬ ОБНОВЛЕН: теперь используем /api/register/apply
-      const response = await fetch("http://localhost:5000/api/register/apply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSend),
-      });
-
-      if (response.ok) {
-        toast.success('Заявка успешно отправлена!');
-        setTimeout(() => navigate('/'), 2000);
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || 'Ошибка при отправке заявки');
-      }
-    } catch (err) {
-      console.error("Ошибка сети:", err);
-      toast.error('Не удалось связаться с сервером');
+      await api.post('/register/apply', dataToSend);
+      
+      toast.success('Заявка успешно отправлена!');
+      setTimeout(() => navigate('/'), 2000);
+    } catch (err: any) {
+      console.error("Ошибка:", err);
+      toast.error(err.response?.data?.error || 'Ошибка при отправке заявки');
     }
   };
 

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
+import api from '../api/client';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -9,24 +11,31 @@ interface ForgotPasswordModalProps {
 export const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProps) => {
   const [email, setEmail] = useState('');
   const [isSent, setIsSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Имитация отправки
-    setIsSent(true);
+    setIsLoading(true);
     
-    // Закрываем окно через 2.5 секунды после успеха
-    setTimeout(() => {
-      setIsSent(false);
-      onClose();
-    }, 2500);
+    try {
+      await api.post('/auth/forgot-password', { email });
+      setIsSent(true);
+      
+      setTimeout(() => {
+        setIsSent(false);
+        onClose();
+      }, 2500);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Ошибка отправки');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-          {/* Фон */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -35,14 +44,12 @@ export const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProp
             className="absolute inset-0 bg-black/30 backdrop-blur-sm"
           />
 
-          {/* Окно */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="relative bg-white w-full max-w-[600px] p-12 shadow-2xl flex flex-col items-center rounded-[40px] text-center"
           >
-            {/* Кнопка закрытия (Оранжевая) */}
             <button
               onClick={onClose}
               className="absolute top-8 right-8 w-12 h-12 bg-brand-orange text-white flex items-center justify-center text-2xl font-bold rounded-2xl hover:scale-105 transition-transform active:scale-95 shadow-lg shadow-brand-orange/20"
@@ -74,9 +81,10 @@ export const ForgotPasswordModal = ({ isOpen, onClose }: ForgotPasswordModalProp
 
                   <button
                     type="submit"
-                    className="w-full bg-brand-dark-teal text-white py-5 rounded-2xl font-unbounded text-lg hover:bg-opacity-90 transition-all active:scale-[0.98] shadow-xl shadow-brand-dark-teal/20"
+                    disabled={isLoading}
+                    className="w-full bg-brand-dark-teal text-white py-5 rounded-2xl font-unbounded text-lg hover:bg-opacity-90 transition-all active:scale-[0.98] shadow-xl shadow-brand-dark-teal/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Получить новый пароль
+                    {isLoading ? 'Отправка...' : 'Получить новый пароль'}
                   </button>
                 </form>
               </>

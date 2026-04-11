@@ -29,31 +29,18 @@ export const AuthModal = ({ isOpen, onClose, onForgotClick, onSuccess }: AuthMod
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login, password }),
-      });
+      const response = await api.post('/auth/login', { login, password });
 
-      const data = await response.json();
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
 
-      if (response.ok) {
-        // Сохраняем токен и данные пользователя
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-
-        toast.success(`Добро пожаловать, ${data.user.fullName || data.user.email}!`);
-        
-        onSuccess(); // Закрываем модалку через родительский компонент
-        
-        // Перенаправляем в профиль (App.tsx сам обработает редирект)
-        navigate('/profile');
-      } else {
-        toast.error(data.error || "Неверный логин или пароль");
-      }
-    } catch (err) {
+      toast.success(`Добро пожаловать, ${response.data.user.fullName || response.data.user.email}!`);
+      
+      onSuccess();
+      navigate('/profile');
+    } catch (err: any) {
       console.error("Ошибка авторизации:", err);
-      toast.error("Не удалось связаться с сервером");
+      toast.error(err.response?.data?.error || "Неверный логин или пароль");
     } finally {
       setIsLoading(false);
     }

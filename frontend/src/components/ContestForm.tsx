@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
+import api from '../api/client';
 
 interface ContestFormProps {
   userRole: string | null;
-  contestId: number;  // ← добавляем id конкурса
+  contestId: number;
   onSuccess: () => void;
 }
 
@@ -57,22 +58,42 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
     
     setIsSubmitting(true);
     
-    // TODO: Здесь будет отправка на бэкенд
-    // const formDataToSend = new FormData();
-    // formDataToSend.append('contestId', contestId.toString());
-    // formDataToSend.append('studentData', JSON.stringify({ ... }));
-    // formDataToSend.append('file', file);
-    // await axios.post('/api/applications', formDataToSend);
+    // TODO: Собрать FormData для отправки
+    const formDataToSend = new FormData();
+    formDataToSend.append('contestId', contestId.toString());
+    formDataToSend.append('studentData', JSON.stringify({
+      surname: formData.surname,
+      name: formData.name,
+      patronymic: formData.patronymic,
+      org: formData.org,
+      city: formData.city,
+      bossName: formData.bossName,
+      bossPhone: formData.bossPhone,
+      bossEmail: formData.bossEmail,
+      workTitle: formData.workTitle,
+      workDesc: formData.workDesc,
+      link: formData.link,
+      exhibition: formData.exhibition
+    }));
+    if (file) {
+      formDataToSend.append('file', file);
+    }
     
-    // Пока просто имитируем отправку
-    setTimeout(() => {
+    try {
+      await api.post('/applications', formDataToSend, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
       toast.success('Заявка успешно отправлена!');
       setFormData(initialState);
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      setIsSubmitting(false);
       onSuccess();
-    }, 1500);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Ошибка при отправке заявки');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
