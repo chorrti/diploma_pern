@@ -52,3 +52,32 @@ export const fetchExhibitionWorkDetails = async (id: number): Promise<Exhibition
     const response = await api.get(`/exhibition/${id}`);
     return response.data;
 };
+
+/**
+ * Удалить работу с выставки (только для модератора)
+ */
+export const deleteExhibitionWork = async (id: number): Promise<void> => {
+    await api.delete(`/exhibition/${id}`);
+};
+
+/**
+ * Получить список заявок на выставку для модератора
+ */
+export const fetchModeratorExhibition = async (): Promise<any[]> => {
+    const response = await api.get('/exhibition/moderator');
+    return response.data;
+};
+
+/**
+ * Опубликовать работу на выставке
+ */
+export const publishExhibitionWork = async (id: number): Promise<void> => {
+    await api.post(`/exhibition/${id}/publish`);
+};
+
+/**
+ * Отклонить заявку на выставку
+ */
+export const rejectExhibitionWork = async (id: number): Promise<void> => {
+    await api.delete(`/exhibition/${id}/reject`);
+};

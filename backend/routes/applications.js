@@ -130,6 +130,22 @@ router.post('/', auth, upload.single('file'), catchAsync(async (req, res) => {
         `, [applicationId, filePath]);
     }
     
+            // Если заявка согласна на участие в выставке, добавляем в таблицу exhibition
+            if (data.exhibition === 'Да') {
+                // Получаем ссылку на изображение (файл или ссылку)
+                let imagePath = null;
+                if (req.file) {
+                    imagePath = `/uploads/attachments/${req.file.filename}`;
+                } else if (data.link && data.link.trim()) {
+                    imagePath = data.link;
+                }
+
+                await pool.query(`
+                    INSERT INTO exhibition (student_id, city, file_path, competition_id, is_published)
+                    VALUES ($1, $2, $3, $4, false)
+                `, [studentProfileId, data.city, imagePath, contestId]);
+            }
+
     res.json({ message: 'Заявка успешно отправлена', applicationId });
 }));
 
@@ -387,24 +403,15 @@ router.get('/student/:studentId', auth, catchAsync(async (req, res) => {
 
 /**
  * GET /api/applications/:id/for-teacher
- * Возвращает детали заявки для учителя (без проверки student_id)
+ * Возвращает детали заявки для учителя, модератора или админа
  */
 router.get('/:id/for-teacher', auth, catchAsync(async (req, res) => {
     const { id } = req.params;
-    const teacherId = req.user.profileId;
+    const userId = req.user.profileId;
+    const userRole = req.user.role;
     
-    // Проверяем, что учитель имеет доступ к этой заявке (через ученика)
-    const accessCheck = await pool.query(`
-        SELECT 1 FROM competition_applications ca
-        JOIN teacher_student ts ON ts.student_id = ca.student_id
-        WHERE ca.id = $1 AND ts.teacher_id = $2
-    `, [id, teacherId]);
-    
-    if (accessCheck.rows.length === 0 && req.user.role !== 'Админ') {
-        return res.status(403).json({ error: 'Доступ запрещён' });
-    }
-    
-    const result = await pool.query(`
+    // Базовый запрос для получения данных заявки
+    const baseQuery = `
         SELECT 
             ca.id,
             ca.title as work_title,
@@ -429,7 +436,61 @@ router.get('/:id/for-teacher', auth, catchAsync(async (req, res) => {
         LEFT JOIN application_attachments file_att ON file_att.application_id = ca.id AND file_att.type = 'file'
         LEFT JOIN application_attachments link_att ON link_att.application_id = ca.id AND link_att.type = 'link'
         WHERE ca.id = $1
-    `, [id]);
+    `;
+    
+    // Модератор или админ — полный доступ
+    if (userRole === 'Модератор' || userRole === 'Админ') {
+        const result = await pool.query(baseQuery, [id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Заявка не найдена' });
+        }
+        
+        const row = result.rows[0];
+        
+        let teacherFullName = null;
+        if (row.teacher_familia) {
+            teacherFullName = `${row.teacher_familia} ${row.teacher_name || ''} ${row.teacher_otchestvo || ''}`.trim();
+        }
+        
+        return res.json({
+            id: row.id,
+            author: {
+                familia: row.familia,
+                name: row.name,
+                otchestvo: row.otchestvo,
+                fullName: `${row.familia} ${row.name} ${row.otchestvo}`.trim(),
+                organization: row.organization,
+                city: row.city,
+                phone: row.phone,
+                email: row.email
+            },
+            teacher: teacherFullName ? {
+                fullName: teacherFullName
+            } : null,
+            work: {
+                title: row.work_title,
+                description: row.work_description,
+                imageUrl: getFileUrl(row.file_url),
+                linkUrl: row.link_url,
+                agreedForExhibition: row.agreed_for_exhib
+            },
+            submittedAt: row.submitted_at
+        });
+    }
+    
+    // Для учителя — проверяем доступ через teacher_student
+    const accessCheck = await pool.query(`
+        SELECT 1 FROM competition_applications ca
+        JOIN teacher_student ts ON ts.student_id = ca.student_id
+        WHERE ca.id = $1 AND ts.teacher_id = $2
+    `, [id, userId]);
+    
+    if (accessCheck.rows.length === 0) {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const result = await pool.query(baseQuery, [id]);
     
     if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Заявка не найдена' });
@@ -552,6 +613,23 @@ router.post('/for-student', auth, upload.single('file'), catchAsync(async (req, 
         `, [applicationId, filePath]);
     }
     
+
+            // Если заявка согласна на участие в выставке, добавляем в таблицу exhibition
+            if (data.exhibition === 'Да') {
+                // Получаем ссылку на изображение (файл или ссылку)
+                let imagePath = null;
+                if (req.file) {
+                    imagePath = `/uploads/attachments/${req.file.filename}`;
+                } else if (data.link && data.link.trim()) {
+                    imagePath = data.link;
+                }
+
+                await pool.query(`
+                    INSERT INTO exhibition (student_id, city, file_path, competition_id, is_published)
+                    VALUES ($1, $2, $3, $4, false)
+                `, [studentProfileId, data.city, imagePath, contestId]);
+            }
+
     res.json({ message: 'Заявка успешно отправлена', applicationId });
 }));
 

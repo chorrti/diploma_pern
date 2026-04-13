@@ -3,16 +3,11 @@ const router = express.Router();
 const pool = require('../db/pool');
 const catchAsync = require('../utils/catchAsync');
 const getFileUrl = require('../utils/fileUrl');
+const auth = require('../middleware/auth');
 
 /**
  * GET /api/exhibition
  * Возвращает список работ для публичной выставки
- * 
- * Query параметры:
- *   thematicId - ID тематики (опционально)
- * 
- * Ответ: массив работ с полями:
- *   id, author (ФИО), city, imageUrl, thematicId, thematicName, competitionId
  */
 router.get('/', catchAsync(async (req, res) => {
     const { thematicId } = req.query;
@@ -30,13 +25,12 @@ router.get('/', catchAsync(async (req, res) => {
         JOIN profiles p ON p.id = e.student_id
         JOIN competitions c ON c.id = e.competition_id
         JOIN thematics t ON t.id = c.thematic_id
-        WHERE c.status = 'archived'
+        WHERE e.is_published = true
     `;
     
     const params = [];
     let paramIndex = 1;
     
-    // Фильтр по тематике
     if (thematicId) {
         query += ` AND t.id = $${paramIndex}`;
         params.push(thematicId);
@@ -47,7 +41,6 @@ router.get('/', catchAsync(async (req, res) => {
     
     const result = await pool.query(query, params);
     
-    // Формируем полные URL для изображений
     const rows = result.rows.map(row => ({
         ...row,
         imageUrl: getFileUrl(row.imageUrl)
@@ -55,6 +48,99 @@ router.get('/', catchAsync(async (req, res) => {
     
     res.json(rows);
 }));
+
+// ============================================
+// КОНКРЕТНЫЕ МАРШРУТЫ (ДО /:id)
+// ============================================
+
+/**
+ * GET /api/exhibition/moderator
+ * Возвращает список заявок на выставку, ожидающих модерации (is_published = false)
+ * Только для модератора или админа
+ */
+router.get('/moderator', auth, catchAsync(async (req, res) => {
+    if (req.user.role !== 'Модератор' && req.user.role !== 'Админ') {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const result = await pool.query(`
+        SELECT 
+            e.id,
+            e.city,
+            e.file_path as "imageUrl",
+            e.competition_id as "competitionId",
+            ca.id as "applicationId",   -- ← ДОБАВЬ ЭТУ СТРОКУ
+            p.familia || ' ' || p.name || ' ' || p.otchestvo as author,
+            c.name as "contestName",
+            ca.title as "workTitle",
+            ca.description as "workDescription"
+        FROM exhibition e
+        JOIN profiles p ON p.id = e.student_id
+        JOIN competitions c ON c.id = e.competition_id
+        JOIN competition_applications ca ON ca.competition_id = e.competition_id AND ca.student_id = e.student_id
+        WHERE e.is_published = false
+        ORDER BY e.id DESC
+    `);
+    
+    const rows = result.rows.map(row => ({
+        id: row.id,
+        applicationId: row.applicationId,   // ← ДОБАВЬ
+        workTitle: row.workTitle,
+        workDescription: row.workDescription,
+        author: row.author,
+        contestTitle: row.contestName,
+        city: row.city,
+        imageUrl: getFileUrl(row.imageUrl)
+    }));
+    
+    res.json(rows);
+}));
+
+/**
+ * POST /api/exhibition/:id/publish
+ * Публикует работу на выставке (is_published = true)
+ */
+router.post('/:id/publish', auth, catchAsync(async (req, res) => {
+    if (req.user.role !== 'Модератор' && req.user.role !== 'Админ') {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const { id } = req.params;
+    
+    const existing = await pool.query('SELECT id FROM exhibition WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+        return res.status(404).json({ error: 'Заявка не найдена' });
+    }
+    
+    await pool.query('UPDATE exhibition SET is_published = true WHERE id = $1', [id]);
+    
+    res.json({ message: 'Работа опубликована на выставке' });
+}));
+
+/**
+ * DELETE /api/exhibition/:id/reject
+ * Отклоняет заявку (удаляет из таблицы)
+ */
+router.delete('/:id/reject', auth, catchAsync(async (req, res) => {
+    if (req.user.role !== 'Модератор' && req.user.role !== 'Админ') {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const { id } = req.params;
+    
+    const existing = await pool.query('SELECT id FROM exhibition WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+        return res.status(404).json({ error: 'Заявка не найдена' });
+    }
+    
+    await pool.query('DELETE FROM exhibition WHERE id = $1', [id]);
+    
+    res.json({ message: 'Заявка отклонена' });
+}));
+
+// ============================================
+// ДИНАМИЧЕСКИЕ МАРШРУТЫ (/:id)
+// ============================================
 
 /**
  * GET /api/exhibition/:id
@@ -74,14 +160,11 @@ router.get('/:id', catchAsync(async (req, res) => {
             p.organization,
             p.phone,
             p.email,
-            -- Данные руководителя (если есть)
             teacher.familia as "teacherFamilia",
             teacher.name as "teacherName",
             teacher.otchestvo as "teacherOtchestvo",
-            -- Данные заявки
             ca.title as "workTitle",
             ca.description as "workDescription",
-            -- Ссылка (из application_attachments)
             att.content as "linkUrl"
         FROM exhibition e
         JOIN profiles p ON p.id = e.student_id
@@ -99,7 +182,6 @@ router.get('/:id', catchAsync(async (req, res) => {
     
     const row = result.rows[0];
     
-    // Формируем ФИО руководителя
     let teacherFullName = null;
     if (row.teacherFamilia) {
         teacherFullName = `${row.teacherFamilia} ${row.teacherName || ''} ${row.teacherOtchestvo || ''}`.trim();
@@ -127,6 +209,27 @@ router.get('/:id', catchAsync(async (req, res) => {
             linkUrl: row.linkUrl
         }
     });
+}));
+
+/**
+ * DELETE /api/exhibition/:id
+ * Удаляет работу с выставки (только для модератора)
+ */
+router.delete('/:id', auth, catchAsync(async (req, res) => {
+    if (req.user.role !== 'Модератор' && req.user.role !== 'Админ') {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const { id } = req.params;
+    
+    const existing = await pool.query('SELECT id FROM exhibition WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+        return res.status(404).json({ error: 'Работа не найдена' });
+    }
+    
+    await pool.query('DELETE FROM exhibition WHERE id = $1', [id]);
+    
+    res.json({ message: 'Работа удалена с выставки' });
 }));
 
 module.exports = router;

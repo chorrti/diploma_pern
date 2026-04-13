@@ -1,18 +1,35 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 import type { ExhibitionWorkDetails } from '../api/exhibition';
 import type { ApplicationDetails } from '../api/applications';
+import { deleteExhibitionWork } from '../api/exhibition';
 
 interface MySubmissionModalProps {
     isOpen: boolean;
     onClose: () => void;
     workDetails?: ExhibitionWorkDetails | ApplicationDetails | null;
+    userRole?: string | null;
+    onWorkDeleted?: () => void;  // Колбэк для обновления списка после удаления
 }
 
-export const MySubmissionModal = ({ isOpen, onClose, workDetails }: MySubmissionModalProps) => {
+export const MySubmissionModal = ({ isOpen, onClose, workDetails, userRole, onWorkDeleted }: MySubmissionModalProps) => {
     if (!workDetails) return null;
     
-    // Определяем тип данных (выставка или заявка)
+    const isModerator = userRole === 'Модератор' || userRole === 'Админ';
     const isExhibition = 'work' in workDetails && 'author' in workDetails;
+    
+    const handleDeleteFromExhibition = async () => {
+        if (!isExhibition || !workDetails.id) return;
+        
+        try {
+            await deleteExhibitionWork(workDetails.id);
+            toast.success('Работа удалена с выставки');
+            onClose();
+            if (onWorkDeleted) onWorkDeleted();
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || 'Ошибка при удалении');
+        }
+    };
     
     // Для выставки
     if (isExhibition) {
@@ -87,6 +104,18 @@ export const MySubmissionModal = ({ isOpen, onClose, workDetails }: MySubmission
                                     <div className="mt-6 pt-4 border-t border-brand-dark-teal/10">
                                         <h3 className="font-unbounded text-xl text-brand-dark-teal mb-2 font-normal">Руководитель</h3>
                                         <p className="font-roboto text-brand-dark-teal text-lg">{teacher.fullName}</p>
+                                    </div>
+                                )}
+                                
+                                {/* Кнопка удаления для модератора */}
+                                {isModerator && (
+                                    <div className="mt-8 pt-6 border-t border-red-200">
+                                        <button
+                                            onClick={handleDeleteFromExhibition}
+                                            className="w-full py-4 bg-red-500 text-white rounded-2xl font-unbounded text-lg hover:bg-red-600 transition-all shadow-md"
+                                        >
+                                            Убрать работу с выставки
+                                        </button>
                                     </div>
                                 )}
                             </div>

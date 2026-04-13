@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 
 interface ModeratorExhibitionCardProps {
+  id: number;
   workTitle: string;
   author: string;
   description: string;
@@ -11,11 +12,18 @@ interface ModeratorExhibitionCardProps {
 }
 
 export const ModeratorExhibitionCard = ({
-  workTitle, author, description, contestTitle, onOpen, onApprove, onReject
+  id,
+  workTitle,
+  author,
+  description,
+  contestTitle,
+  onOpen,
+  onApprove,
+  onReject
 }: ModeratorExhibitionCardProps) => {
   
   const handleAction = (e: React.MouseEvent, action: () => void) => {
-    e.stopPropagation(); // Чтобы не открывалось модальное окно при клике на кнопки
+    e.stopPropagation();
     action();
   };
 
@@ -35,7 +43,6 @@ export const ModeratorExhibitionCard = ({
           </p>
         </div>
         
-        {/* Кнопки действий */}
         <div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
           <button 
             onClick={(e) => handleAction(e, onApprove)}

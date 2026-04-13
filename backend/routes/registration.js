@@ -82,7 +82,7 @@ router.get('/all', auth, catchAsync(async (req, res) => {
 
 /**
  * POST /api/register/approve/:id
- * Одобрение заявки (с поддержкой привязки к существующему профилю)
+ * Одобрение заявки (с поддержкой восстановления удалённого профиля)
  */
 router.post('/approve/:id', auth, catchAsync(async (req, res) => {
     
@@ -91,7 +91,7 @@ router.post('/approve/:id', auth, catchAsync(async (req, res) => {
     }
     
     const { id } = req.params;
-    const { role, login, password, hasProfile, editedData } = req.body;
+    const { role, login, password, editedData } = req.body;
     
     // 1. Получаем данные заявки
     const requestResult = await pool.query(`SELECT * FROM registration_requests WHERE id = $1`, [id]);
@@ -110,69 +110,75 @@ router.post('/approve/:id', auth, catchAsync(async (req, res) => {
     const finalOrganization = editedData?.organization || request.organization;
     
     // ============================================
-    // 2. ЕСЛИ УЖЕ ЕСТЬ ПРОФИЛЬ — ПРИВЯЗЫВАЕМ АККАУНТ
+    // 2. ПРОВЕРЯЕМ, ЕСТЬ ЛИ ПРОФИЛЬ С ТАКИМ ТЕЛЕФОНОМ (ВКЛЮЧАЯ УДАЛЁННЫЕ)
     // ============================================
-    if (hasProfile) {
-        // Ищем профиль ТОЛЬКО по номеру телефона
-        const existingProfile = await pool.query(`
-            SELECT id, user_id, email, is_deleted 
-            FROM profiles 
-            WHERE phone = $1
-            LIMIT 1
-        `, [request.phone]);
-        
-        if (existingProfile.rows.length === 0) {
-            return res.status(404).json({ error: 'Профиль с таким номером телефона не найден' });
-        }
-        
+    const existingProfile = await pool.query(`
+        SELECT id, user_id, email, is_deleted 
+        FROM profiles 
+        WHERE phone = $1
+        LIMIT 1
+    `, [request.phone]);
+    
+    if (existingProfile.rows.length > 0) {
         const profile = existingProfile.rows[0];
         
-        // Если у профиля уже есть аккаунт
-        if (profile.user_id) {
-            return res.status(400).json({ error: 'У этого профиля уже есть аккаунт' });
+        // Если профиль помечен как удалённый — восстанавливаем его
+        if (profile.is_deleted) {
+            // Восстанавливаем профиль и обновляем данные
+            await pool.query(`
+                UPDATE profiles 
+                SET is_deleted = false, 
+                    name = $1, 
+                    familia = $2, 
+                    otchestvo = $3, 
+                    birth_date = $4, 
+                    city = $5, 
+                    organization = $6,
+                    email = $7
+                WHERE id = $8
+            `, [
+                finalName,
+                finalFamilia,
+                finalOtchestvo,
+                request.birth_date,
+                finalCity,
+                finalOrganization,
+                request.email,
+                profile.id
+            ]);
+            
+            // Если у профиля был аккаунт — активируем его и обновляем пароль
+            if (profile.user_id) {
+                const hashedPassword = await bcrypt.hash(password, 10);
+                await pool.query(`
+                    UPDATE users 
+                    SET password_hash = $1, is_active = true 
+                    WHERE id = $2
+                `, [hashedPassword, profile.user_id]);
+            } else {
+                // Если аккаунта не было (ученик без аккаунта) — создаём
+                const hashedPassword = await bcrypt.hash(password, 10);
+                const userResult = await pool.query(`
+                    INSERT INTO users (login, password_hash, is_active)
+                    VALUES ($1, $2, true)
+                    RETURNING id
+                `, [login, hashedPassword]);
+                await pool.query(`UPDATE profiles SET user_id = $1 WHERE id = $2`, [userResult.rows[0].id, profile.id]);
+            }
+            
+            // Удаляем заявку
+            await pool.query(`DELETE FROM registration_requests WHERE id = $1`, [id]);
+            
+            // Отправляем письмо
+            sendEmail(request.email, 'Аккаунт восстановлен', 
+                `Ваш аккаунт был восстановлен!\n\nЛогин: ${login}\nПароль: ${password}\n\nРекомендуем сменить пароль после входа.`
+            );
+            
+            return res.json({ message: 'Аккаунт восстановлен' });
+        } else {
+            // Профиль существует и не удалён — ошибка
+            return res.status(400).json({ error: 'Пользователь с таким номером телефона уже существует' });
         }
-        
-        // Создаём пользователя для этого профиля
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const userResult = await pool.query(`
-            INSERT INTO users (login, password_hash, is_active)
-            VALUES ($1, $2, true)
-            RETURNING id
-        `, [login, hashedPassword]);
-        const userId = userResult.rows[0].id;
-        
-        // Привязываем пользователя к профилю
-        await pool.query(`UPDATE profiles SET user_id = $1 WHERE id = $2`, [userId, profile.id]);
-        
-        // Обновляем данные профиля (ФИО, город, организация, email)
-        await pool.query(`
-            UPDATE profiles 
-            SET name = $1, 
-                familia = $2, 
-                otchestvo = $3, 
-                city = $4, 
-                organization = $5, 
-                email = $6
-            WHERE id = $7
-        `, [
-            finalName, 
-            finalFamilia, 
-            finalOtchestvo, 
-            finalCity, 
-            finalOrganization, 
-            request.email, 
-            profile.id
-        ]);
-        
-        // Удаляем заявку
-        await pool.query(`DELETE FROM registration_requests WHERE id = $1`, [id]);
-        
-        // Отправляем письмо
-        sendEmail(request.email, 'Аккаунт создан', 
-            `Для вашего профиля создан аккаунт!\n\nЛогин: ${login}\nПароль: ${password}`
-        );
-        
-        return res.json({ message: 'Аккаунт привязан к существующему профилю' });
     }
     
     // ============================================
@@ -214,7 +220,7 @@ router.post('/approve/:id', auth, catchAsync(async (req, res) => {
     await pool.query(`DELETE FROM registration_requests WHERE id = $1`, [id]);
     
     sendEmail(request.email, 'Регистрация подтверждена', 
-        `Ваша заявка на платформе Портфель одобрена!\n\nЛогин: ${login}\nПароль: ${password}`
+        `Ваша заявка на платформе Портфель одобрена!\n\nЛогин: ${login}\nПароль: ${password}\n\nРекомендуем сменить пароль после входа.`
     );
     
     res.json({ message: 'Заявка одобрена' });

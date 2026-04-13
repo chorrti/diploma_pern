@@ -272,14 +272,32 @@ export const Home = ({ userRole }: HomeProps) => {
             <Footer />
 
             {/* Модальное окно с деталями работы */}
-            <MySubmissionModal 
-                isOpen={isModalOpen}
-                onClose={() => {
-                    setIsModalOpen(false);
-                    setSelectedWork(null);
-                }}
-                workDetails={selectedWork}
-            />
+                <MySubmissionModal 
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                        setIsModalOpen(false);
+                        setSelectedWork(null);
+                    }}
+                    workDetails={selectedWork}
+                    userRole={userRole}
+                    onWorkDeleted={() => {
+                        // Обновляем список выставки после удаления
+                        const loadExhibition = async () => {
+                            setLoadingExhibition(true);
+                            try {
+                                const thematicId = selectedCategory === 'Все' ? null : 
+                                    thematics.find(t => t.name === selectedCategory)?.id;
+                                const data = await fetchExhibitionWorks(thematicId);
+                                setExhibitionWorks(data);
+                            } catch (error) {
+                                console.error('Ошибка загрузки выставки:', error);
+                            } finally {
+                                setLoadingExhibition(false);
+                            }
+                        };
+                        loadExhibition();
+                    }}
+                />
         </div>
     );
 };
