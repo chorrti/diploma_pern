@@ -14,6 +14,9 @@ interface AdminUserCardProps {
 }
 
 export const AdminUserCard = ({ user, onDelete }: AdminUserCardProps) => {
+  // Запрещаем удаление для админа и модератора
+  const isProtectedRole = user.role === 'Админ' || user.role === 'Модератор';
+
   const Field = ({ label, value }: { label: string; value: string }) => (
     <div className="flex flex-col gap-1 w-full">
       <span className="text-[12px] font-roboto ml-2 text-[#49A0A5]">{label}</span>
@@ -43,16 +46,18 @@ export const AdminUserCard = ({ user, onDelete }: AdminUserCardProps) => {
       </div>
 
       <div className="pt-8 border-t border-[#49A0A5] border-opacity-30">
-        <button 
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            onDelete();
-          }}
-          className="w-full h-[55px] border-2 border-[#49A0A5] bg-white text-[#49A0A5] rounded-[15px] font-roboto text-lg uppercase hover:bg-red-500 hover:border-red-500 hover:text-white transition-all shadow-sm active:scale-95"
-        >
-          Удалить пользователя
-        </button>
+        {!isProtectedRole && (
+          <button 
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onDelete();
+            }}
+            className="w-full h-[55px] border-2 border-[#49A0A5] bg-white text-[#49A0A5] rounded-[15px] font-roboto text-lg uppercase hover:bg-red-500 hover:border-red-500 hover:text-white transition-all shadow-sm active:scale-95"
+          >
+            Удалить пользователя
+          </button>
+        )}
       </div>
     </div>
   );

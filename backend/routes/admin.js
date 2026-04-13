@@ -78,7 +78,7 @@ router.get('/users', auth, catchAsync(async (req, res) => {
 
 /**
  * DELETE /api/admin/users/:profileId
- * Мягкое удаление пользователя (без deleted_at, только is_deleted)
+ * Мягкое удаление пользователя (нельзя удалить админа или модератора)
  */
 router.delete('/users/:profileId', auth, catchAsync(async (req, res) => {
     if (req.user.role !== 'Админ') {
@@ -87,17 +87,29 @@ router.delete('/users/:profileId', auth, catchAsync(async (req, res) => {
     
     const { profileId } = req.params;
     
-    // Проверяем, существует ли пользователь и не удалён ли уже
-    const profile = await pool.query(`
-        SELECT user_id FROM profiles 
-        WHERE id = $1 AND is_deleted = false
+    // Проверяем роль удаляемого пользователя
+    const roleCheck = await pool.query(`
+        SELECT r.name as role_name 
+        FROM profiles p
+        JOIN roles r ON r.id = p.role_id
+        WHERE p.id = $1 AND p.is_deleted = false
     `, [profileId]);
     
-    if (profile.rows.length === 0) {
+    if (roleCheck.rows.length === 0) {
         return res.status(404).json({ error: 'Пользователь не найден' });
     }
     
-    // Мягкое удаление профиля (только is_deleted, без deleted_at)
+    const userRole = roleCheck.rows[0].role_name;
+    
+    // Запрещаем удаление админа и модератора
+    if (userRole === 'Админ' || userRole === 'Модератор') {
+        return res.status(403).json({ error: 'Нельзя удалить администратора или модератора' });
+    }
+    
+    // Получаем user_id из профиля
+    const profile = await pool.query(`SELECT user_id FROM profiles WHERE id = $1`, [profileId]);
+    
+    // Мягкое удаление профиля
     await pool.query(`
         UPDATE profiles 
         SET is_deleted = true,
@@ -106,7 +118,7 @@ router.delete('/users/:profileId', auth, catchAsync(async (req, res) => {
     `, [profileId]);
     
     // Блокировка аккаунта (если есть)
-    if (profile.rows[0].user_id) {
+    if (profile.rows[0]?.user_id) {
         await pool.query(`UPDATE users SET is_active = false WHERE id = $1`, [profile.rows[0].user_id]);
     }
     

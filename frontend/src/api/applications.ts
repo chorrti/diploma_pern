@@ -80,3 +80,46 @@ export const checkMyApplicationForContest = async (contestId: number): Promise<{
         return { hasSubmitted: false, applicationId: null };
     }
 };
+/**
+ * Получить список заявок ученика по ID (для учителя)
+ */
+export const fetchApplicationsByStudentId = async (studentId: number): Promise<MyApplication[]> => {
+    const response = await api.get(`/applications/student/${studentId}`);
+    return response.data;
+};
+
+/**
+ * Получить список дипломов ученика по ID (для учителя)
+ */
+export const fetchDiplomasByStudentId = async (studentId: number): Promise<MyDiploma[]> => {
+    const response = await api.get(`/results/student/${studentId}`);
+    return response.data;
+};
+
+/**
+ * Скачать все дипломы текущего пользователя архивом
+ */
+export const downloadAllDiplomas = async (): Promise<Blob> => {
+    const response = await api.get('/results/my/zip', {
+        responseType: 'blob'
+    });
+    return response.data;
+};
+
+/**
+ * Получить детали заявки по ID (для учителя)
+ */
+export const fetchApplicationDetailsForTeacher = async (applicationId: number): Promise<ApplicationDetails> => {
+    const response = await api.get(`/applications/${applicationId}/for-teacher`);
+    return response.data;
+};
+
+/**
+ * Скачать все дипломы ученика архивом (для учителя)
+ */
+export const downloadStudentDiplomas = async (studentId: number): Promise<Blob> => {
+    const response = await api.get(`/results/student/${studentId}/zip`, {
+        responseType: 'blob'
+    });
+    return response.data;
+};

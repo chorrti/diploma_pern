@@ -15,3 +15,8 @@ export const fetchMyProfile = async (): Promise<ProfileData> => {
     const response = await api.get('/profiles/me');
     return response.data;
 };
+
+export const fetchProfileById = async (id: number): Promise<ProfileData> => {
+    const response = await api.get(`/profiles/${id}`);
+    return response.data;
+};

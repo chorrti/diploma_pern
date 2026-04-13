@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 interface ProfileCardProps {
-  id: number;  // ← добавляем id конкурса
+  id: number;
   title: string;
   start: string;
   end: string;
@@ -10,7 +10,8 @@ interface ProfileCardProps {
   desc: string;
   variant: 'participation' | 'portfolio';
   diploma?: string;
-  onOpenSubmission: () => void;
+  onOpenSubmission?: () => void;
+  onDownloadDiploma?: () => void;
 }
 
 export const ProfileContestCard = ({ 
@@ -22,19 +23,28 @@ export const ProfileContestCard = ({
   desc, 
   variant, 
   diploma, 
-  onOpenSubmission 
+  onOpenSubmission,
+  onDownloadDiploma
 }: ProfileCardProps) => {
   const navigate = useNavigate();
   const isPortfolio = variant === 'portfolio';
 
   const handleNavigate = () => {
-    // Передаём ID конкурса в URL
     const params = new URLSearchParams();
     params.append('id', id.toString());
     if (isPortfolio) {
       params.append('status', 'finished');
     }
     navigate(`/contest?${params.toString()}`);
+  };
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPortfolio && onDownloadDiploma) {
+      onDownloadDiploma();
+    } else if (!isPortfolio && onOpenSubmission) {
+      onOpenSubmission();
+    }
   };
 
   return (
@@ -72,10 +82,7 @@ export const ProfileContestCard = ({
 
         <div className="flex flex-col gap-4 w-[300px] justify-center">
           <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isPortfolio) onOpenSubmission();
-            }}
+            onClick={handleButtonClick}
             className={`w-full bg-transparent border py-3.5 rounded-xl font-roboto transition-all text-base tracking-wide font-normal ${
               isPortfolio 
                 ? 'border-brand-red-dark text-brand-red-dark hover:bg-brand-red-dark hover:text-white' 

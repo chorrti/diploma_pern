@@ -3,27 +3,35 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { MySubmissionModal } from '../MySubmissionModal';
 import { ProfileContestCard } from './ProfileContestCard';
-import { fetchMyApplications, fetchMyDiplomas, fetchApplicationDetails } from '../../api/applications';
-import type { MyApplication, MyDiploma, ApplicationDetails } from '../../api/applications';
+import { fetchMyApplications, fetchMyDiplomas, fetchApplicationDetails, fetchApplicationsByStudentId, fetchDiplomasByStudentId, fetchApplicationDetailsForTeacher } from '../../api/applications';
+import type { ApplicationDetails } from '../../api/applications';
 import { toast } from 'react-hot-toast';
 import api from '../../api/client';
 
-export const StudentProfile = () => {
+interface StudentProfileProps {
+  studentId?: number;
+}
+
+export const StudentProfile = ({ studentId }: StudentProfileProps) => {
   const [activeTab, setActiveTab] = useState('Участие в конкурсах');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<ApplicationDetails | null>(null);
-  
-  const [participations, setParticipations] = useState<MyApplication[]>([]);
-  const [portfolio, setPortfolio] = useState<MyDiploma[]>([]);
-  const [loading, setLoading] = useState({ participations: true, portfolio: true });
-
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  const [participations, setParticipations] = useState<any[]>([]);
+  const [portfolio, setPortfolio] = useState<any[]>([]);
+  const [loading, setLoading] = useState({ participations: true, portfolio: true });
 
   // Загружаем заявки
   useEffect(() => {
     const loadParticipations = async () => {
       try {
-        const data = await fetchMyApplications();
+        let data;
+        if (studentId) {
+          data = await fetchApplicationsByStudentId(studentId);
+        } else {
+          data = await fetchMyApplications();
+        }
         setParticipations(data);
       } catch (error) {
         console.error('Ошибка загрузки заявок:', error);
@@ -33,13 +41,18 @@ export const StudentProfile = () => {
       }
     };
     loadParticipations();
-  }, []);
+  }, [studentId]);
 
   // Загружаем дипломы
   useEffect(() => {
     const loadPortfolio = async () => {
       try {
-        const data = await fetchMyDiplomas();
+        let data;
+        if (studentId) {
+          data = await fetchDiplomasByStudentId(studentId);
+        } else {
+          data = await fetchMyDiplomas();
+        }
         setPortfolio(data);
       } catch (error) {
         console.error('Ошибка загрузки дипломов:', error);
@@ -49,12 +62,16 @@ export const StudentProfile = () => {
       }
     };
     loadPortfolio();
-  }, []);
+  }, [studentId]);
 
-  // Открытие модалки с деталями заявки
   const handleOpenSubmission = async (applicationId: number) => {
     try {
-      const details = await fetchApplicationDetails(applicationId);
+      let details;
+      if (studentId) {
+        details = await fetchApplicationDetailsForTeacher(applicationId);
+      } else {
+        details = await fetchApplicationDetails(applicationId);
+      }
       setSelectedApplication(details);
       setIsModalOpen(true);
     } catch (error) {
@@ -63,37 +80,44 @@ export const StudentProfile = () => {
     }
   };
 
-  //скачивание всех дипломов
-const handleDownloadAllDiplomas = async () => {
-    setIsDownloading(true);
-    try {
-        const response = await api.get('/results/my/zip', {
-            responseType: 'blob'
-        });
-        
-        // Создаём ссылку для скачивания
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `diplomas_${Date.now()}.zip`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
-        
-        toast.success('Архив с дипломами скачан');
-    } catch (error) {
-        console.error('Ошибка скачивания архива:', error);
-        toast.error('Не удалось скачать архив');
-    } finally {
-        setIsDownloading(false);
-    }
-};
-
-  // Скачивание диплома
   const handleDownloadDiploma = (diplomaUrl: string) => {
     if (diplomaUrl) {
       window.open(diplomaUrl, '_blank');
+    }
+  };
+
+  // Скачивание всех дипломов (для своего профиля или для ученика)
+  const handleDownloadAllDiplomas = async () => {
+    setIsDownloading(true);
+    try {
+      let response;
+      if (studentId) {
+        // Скачиваем дипломы ученика
+        response = await api.get(`/results/student/${studentId}/zip`, {
+          responseType: 'blob'
+        });
+      } else {
+        // Скачиваем свои дипломы
+        response = await api.get('/results/my/zip', {
+          responseType: 'blob'
+        });
+      }
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `diplomas_${Date.now()}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Архив с дипломами скачан');
+    } catch (error) {
+      console.error('Ошибка скачивания архива:', error);
+      toast.error('Не удалось скачать архив');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -103,13 +127,13 @@ const handleDownloadAllDiplomas = async () => {
     }
     
     if (participations.length === 0) {
-      return <p className="text-center text-gray-500 py-10">Вы ещё не подали ни одной заявки</p>;
+      return <p className="text-center text-gray-500 py-10">Заявок пока нет</p>;
     }
     
     return participations.map(item => (
       <ProfileContestCard
         key={item.id}
-        id={item.contest.id}  // ← добавляем id конкурса
+        id={item.contest.id}
         variant="participation"
         title={item.contest.name}
         start={item.contest.startDate}
@@ -121,19 +145,19 @@ const handleDownloadAllDiplomas = async () => {
     ));
   };
 
-const renderPortfolio = () => {
+  const renderPortfolio = () => {
     if (loading.portfolio) {
       return <p className="text-center text-gray-500 py-10">Загрузка...</p>;
     }
     
     if (portfolio.length === 0) {
-      return <p className="text-center text-gray-500 py-10">У вас пока нет дипломов</p>;
+      return <p className="text-center text-gray-500 py-10">Дипломов пока нет</p>;
     }
     
     return portfolio.map(item => (
       <ProfileContestCard
         key={item.id}
-        id={item.contest.id}  // ← добавляем id конкурса
+        id={item.contest.id}
         variant="portfolio"
         title={item.contest.name}
         start={item.contest.startDate}
@@ -141,10 +165,13 @@ const renderPortfolio = () => {
         results={item.contest.resultsDate}
         desc={item.contest.description}
         diploma={item.degree}
-        onOpenSubmission={() => handleDownloadDiploma(item.diplomaUrl)}
+        onDownloadDiploma={() => handleDownloadDiploma(item.diplomaUrl)}
       />
     ));
   };
+
+  // Показываем кнопку "Скачать все дипломы", если есть дипломы
+  const showDownloadAllButton = portfolio.length > 0;
 
   return (
     <div className="max-w-[1200px] mx-auto font-normal">
@@ -152,7 +179,6 @@ const renderPortfolio = () => {
         <title>Личный кабинет ученика | Платформа конкурсов</title>
       </Helmet>
 
-      {/* ТАБЫ */}
       <div className="relative w-full bg-brand-peach/30 rounded-full p-1 flex mb-12 max-w-[700px] mx-auto">
         {['Участие в конкурсах', 'Портфолио'].map((tab) => (
           <button
@@ -174,20 +200,23 @@ const renderPortfolio = () => {
         ))}
       </div>
 
-        {activeTab === 'Портфолио' && portfolio.length > 0 && (
-            <div className="flex justify-center mb-10">
-                <button
-                    onClick={handleDownloadAllDiplomas}
-                    disabled={isDownloading}
-                    className="w-full max-w-[400px] bg-brand-accent-teal text-white py-4 rounded-2xl font-unbounded text-lg hover:bg-opacity-90 transition-all disabled:opacity-50 shadow-md"
-                >
-                    {isDownloading ? 'Подготовка архива...' : 'Скачать все дипломы (ZIP)'}
-                </button>
-            </div>
-        )}
+      {activeTab === 'Портфолио' && showDownloadAllButton && (
+        <div className="flex justify-center mb-10">
+          <button
+            onClick={handleDownloadAllDiplomas}
+            disabled={isDownloading}
+            className="w-full max-w-[400px] bg-brand-accent-teal text-white py-4 rounded-2xl font-unbounded text-lg hover:bg-opacity-90 transition-all disabled:opacity-50 shadow-md"
+          >
+            {isDownloading 
+              ? 'Подготовка архива...' 
+              : studentId 
+                ? 'Скачать все дипломы ученика (ZIP)' 
+                : 'Скачать все дипломы (ZIP)'
+            }
+          </button>
+        </div>
+      )}
 
-
-      {/* КОНТЕНТ */}
       <div className="mt-10">
         <AnimatePresence mode="wait">
           <motion.div
