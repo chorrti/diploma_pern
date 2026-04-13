@@ -219,4 +219,94 @@ router.get('/:id', auth, catchAsync(async (req, res) => {
     });
 }));
 
+/**
+ * GET /api/profiles/students/my
+ * Возвращает список учеников текущего учителя
+ */
+router.get('/students/my', auth, catchAsync(async (req, res) => {
+    const teacherId = req.user.profileId;
+    
+    const result = await pool.query(`
+        SELECT 
+            p.id,
+            p.familia,
+            p.name,
+            p.otchestvo,
+            p.birth_date,
+            p.phone,
+            p.email,
+            p.city,
+            p.organization
+        FROM teacher_student ts
+        JOIN profiles p ON p.id = ts.student_id
+        WHERE ts.teacher_id = $1 AND p.is_deleted = false
+        ORDER BY p.familia, p.name
+    `, [teacherId]);
+    
+    const students = result.rows.map(row => ({
+        id: row.id,
+        fullName: `${row.familia} ${row.name} ${row.otchestvo || ''}`.trim(),
+        birthDate: row.birth_date ? new Date(row.birth_date).toLocaleDateString('ru-RU') : '',
+        phone: row.phone || '',
+        email: row.email || '',
+        city: row.city || '',
+        organization: row.organization || ''
+    }));
+    
+    res.json(students);
+}));
+
+/**
+ * GET /api/profiles/student/:id
+ * Возвращает данные конкретного ученика для учителя
+ */
+router.get('/student/:id', auth, catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const teacherId = req.user.profileId;
+    
+    // Проверяем, что учитель имеет доступ к этому ученику
+    const accessCheck = await pool.query(`
+        SELECT 1 FROM teacher_student 
+        WHERE teacher_id = $1 AND student_id = $2
+    `, [teacherId, id]);
+    
+    if (accessCheck.rows.length === 0 && req.user.role !== 'Админ') {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const result = await pool.query(`
+        SELECT 
+            p.id,
+            p.familia,
+            p.name,
+            p.otchestvo,
+            p.birth_date,
+            p.phone,
+            p.email,
+            p.city,
+            p.organization
+        FROM profiles p
+        WHERE p.id = $1 AND p.is_deleted = false
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Ученик не найден' });
+    }
+    
+    const row = result.rows[0];
+    
+    res.json({
+        id: row.id,
+        fullName: `${row.familia} ${row.name} ${row.otchestvo || ''}`.trim(),
+        birthDate: row.birth_date ? new Date(row.birth_date).toLocaleDateString('ru-RU') : '',
+        phone: row.phone || '',
+        email: row.email || '',
+        city: row.city || '',
+        organization: row.organization || '',
+        familia: row.familia,
+        name: row.name,
+        otchestvo: row.otchestvo || ''
+    });
+}));
+
 module.exports = router;

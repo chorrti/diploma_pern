@@ -273,9 +273,16 @@ export const ContestPage = ({ userRole }: ContestPageProps) => {
               userRole={userRole} 
               contestId={parseInt(contestId!)}
               onSuccess={(newApplicationId) => { 
-                setHasSubmitted(true); 
-                setExistingApplicationId(newApplicationId);
-                setIsFormOpen(false); 
+                if (userRole === 'Ученик') {
+                     setHasSubmitted(true); 
+                     setExistingApplicationId(newApplicationId);
+                     setIsFormOpen(false);
+                   } else {
+                     // Для учителя: очищаем форму, но не закрываем её
+                     // Ничего не меняем в состоянии страницы
+                     toast.success('Заявка успешно отправлена!');
+                     // Опционально: очистить форму, но оставить выбранного ученика
+                   }
               }} 
             />
           </div>

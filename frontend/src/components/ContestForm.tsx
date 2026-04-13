@@ -2,7 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
 import api from '../api/client';
 import { fetchMyProfile } from '../api/profile';
+import { fetchMyStudents, fetchStudentById } from '../api/students';
 import type { ProfileData } from '../api/profile';
+import type { Student } from '../api/students';
 
 interface ContestFormProps {
   userRole: string | null;
@@ -18,6 +20,10 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   const initialState = {
     surname: '', name: '', patronymic: '', org: '', city: '',
@@ -30,6 +36,7 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
   const [agreed, setAgreed] = useState({ rules: false, pdn: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Загрузка профиля ученика
   useEffect(() => {
     if (isStudent) {
       const loadProfile = async () => {
@@ -59,6 +66,68 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
     }
   }, [isStudent]);
 
+  // Загрузка списка учеников для учителя
+  useEffect(() => {
+    if (isTeacher) {
+      const loadStudents = async () => {
+        setLoadingStudents(true);
+        try {
+          const data = await fetchMyStudents();
+          setStudents(data);
+        } catch (error) {
+          console.error('Ошибка загрузки учеников:', error);
+          toast.error('Не удалось загрузить список учеников');
+        } finally {
+          setLoadingStudents(false);
+        }
+      };
+      loadStudents();
+    }
+  }, [isTeacher]);
+
+  // Загрузка данных учителя
+  useEffect(() => {
+    if (isTeacher) {
+      const loadTeacherData = async () => {
+        try {
+          const data = await fetchMyProfile();
+          setFormData(prev => ({
+            ...prev,
+            bossName: data.fullName,
+            bossPhone: data.phone,
+            bossEmail: data.email
+          }));
+        } catch (error) {
+          console.error('Ошибка загрузки данных учителя:', error);
+        }
+      };
+      loadTeacherData();
+    }
+  }, [isTeacher]);
+
+  // Загрузка данных выбранного ученика
+  useEffect(() => {
+    if (isTeacher && selectedStudentId) {
+      const loadStudentData = async () => {
+        try {
+          const student = await fetchStudentById(selectedStudentId);
+          setFormData(prev => ({
+            ...prev,
+            surname: student.familia,
+            name: student.name,
+            patronymic: student.otchestvo,
+            org: student.organization,
+            city: student.city
+          }));
+        } catch (error) {
+          console.error('Ошибка загрузки данных ученика:', error);
+          toast.error('Не удалось загрузить данные ученика');
+        }
+      };
+      loadStudentData();
+    }
+  }, [isTeacher, selectedStudentId]);
+
   useEffect(() => {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
@@ -83,6 +152,7 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
     if (formData.bossPhone.length < 18) return "Введите полный номер телефона";
     if (!file && !link.trim()) return "Нужно фото работы ИЛИ ссылка на диск";
     if (!agreed.rules || !agreed.pdn) return "Подтвердите согласия внизу";
+    if (!formData.exhibition) return "Укажите, согласны ли на участие в выставке";
     return null;
   };
 
@@ -95,44 +165,76 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
     
     const formDataToSend = new FormData();
     formDataToSend.append('contestId', contestId.toString());
-    formDataToSend.append('studentData', JSON.stringify({
-      surname: formData.surname,
-      name: formData.name,
-      patronymic: formData.patronymic,
-      org: formData.org,
-      city: formData.city,
-      bossName: formData.bossName,
-      bossPhone: formData.bossPhone,
-      bossEmail: formData.bossEmail,
-      workTitle: formData.workTitle,
-      workDesc: formData.workDesc,
-      link: formData.link,
-      exhibition: formData.exhibition
-    }));
-    if (file) {
-      formDataToSend.append('file', file);
-    }
     
-    try {
-      const response = await api.post('/applications', formDataToSend, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+    if (isTeacher && selectedStudentId) {
+      formDataToSend.append('studentId', selectedStudentId.toString());
+      formDataToSend.append('studentData', JSON.stringify({
+        workTitle: formData.workTitle,
+        workDesc: formData.workDesc,
+        link: formData.link,
+        exhibition: formData.exhibition
+      }));
+      if (file) {
+        formDataToSend.append('file', file);
+      }
       
-      toast.success('Заявка успешно отправлена!');
-      setFormData(initialState);
-      setFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      try {
+        const response = await api.post('/applications/for-student', formDataToSend, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        
+        //toast.success('Заявка успешно отправлена!');
+        setFormData(initialState);
+        setFile(null);
+        setSelectedStudentId(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        
+        onSuccess(response.data.applicationId);
+      } catch (err: any) {
+        toast.error(err.response?.data?.error || 'Ошибка при отправке заявки');
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      formDataToSend.append('studentData', JSON.stringify({
+        surname: formData.surname,
+        name: formData.name,
+        patronymic: formData.patronymic,
+        org: formData.org,
+        city: formData.city,
+        bossName: formData.bossName,
+        bossPhone: formData.bossPhone,
+        bossEmail: formData.bossEmail,
+        workTitle: formData.workTitle,
+        workDesc: formData.workDesc,
+        link: formData.link,
+        exhibition: formData.exhibition
+      }));
+      if (file) {
+        formDataToSend.append('file', file);
+      }
       
-      onSuccess(response.data.applicationId);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Ошибка при отправке заявки');
-    } finally {
-      setIsSubmitting(false);
+      try {
+        const response = await api.post('/applications', formDataToSend, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        
+        toast.success('Заявка успешно отправлена!');
+        setFormData(initialState);
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        
+        onSuccess(response.data.applicationId);
+      } catch (err: any) {
+        toast.error(err.response?.data?.error || 'Ошибка при отправке заявки');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
-  if (loadingProfile) {
-    return <div className="text-center py-20">Загрузка данных профиля...</div>;
+  if (loadingProfile || (isTeacher && loadingStudents)) {
+    return <div className="text-center py-20">Загрузка данных...</div>;
   }
 
   return (
@@ -142,10 +244,17 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
       {isTeacher && (
         <div className="bg-[#FFF2F0] border-2 border-brand-orange rounded-[40px] p-6 mb-10 flex flex-col md:flex-row justify-between items-center px-10 gap-4">
           <span className="font-unbounded text-2xl text-brand-red-dark">Выбрать ученика</span>
-          <select className="w-full max-w-[400px] p-4 bg-white rounded-xl outline-none border-none font-roboto text-brand-dark-teal cursor-pointer">
+          <select 
+            value={selectedStudentId || ''}
+            onChange={(e) => setSelectedStudentId(e.target.value ? parseInt(e.target.value) : null)}
+            className="w-full max-w-[400px] p-4 bg-white rounded-xl outline-none border-none font-roboto text-brand-dark-teal cursor-pointer"
+          >
             <option value="">Выберите из списка</option>
-            <option>Иванов Иван Иванович</option>
-            <option>Петров Петр Петрович</option>
+            {students.map(student => (
+              <option key={student.id} value={student.id}>
+                {student.fullName}
+              </option>
+            ))}
           </select>
         </div>
       )}
@@ -159,7 +268,6 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
               value={formData.surname} 
               className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
               onChange={e => setFormData({...formData, surname: e.target.value})}
-              disabled={isStudent}
             />
           </div>
           <div className="space-y-2">
@@ -169,7 +277,6 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
               value={formData.name} 
               className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
               onChange={e => setFormData({...formData, name: e.target.value})}
-              disabled={isStudent}
             />
           </div>
           <div className="space-y-2">
@@ -179,7 +286,6 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
               value={formData.patronymic} 
               className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
               onChange={e => setFormData({...formData, patronymic: e.target.value})}
-              disabled={isStudent}
             />
           </div>
           <div className="space-y-2">
@@ -189,7 +295,6 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
               value={formData.org} 
               className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
               onChange={e => setFormData({...formData, org: e.target.value})}
-              disabled={isStudent}
             />
           </div>
           <div className="space-y-2">
@@ -199,7 +304,6 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
               value={formData.city} 
               className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
               onChange={e => setFormData({...formData, city: e.target.value})}
-              disabled={isStudent}
             />
           </div>
         </div>
@@ -207,15 +311,31 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">ФИО Руководителя</label>
-            <input type="text" value={formData.bossName} className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" onChange={e => setFormData({...formData, bossName: e.target.value})} />
+            <input 
+              type="text" 
+              value={formData.bossName} 
+              className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
+              onChange={e => setFormData({...formData, bossName: e.target.value})}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">Номер руководителя</label>
-            <input type="tel" value={formData.bossPhone} placeholder="+7 (XXX) XXX-XX-XX" className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" onChange={handlePhoneChange} />
+            <input 
+              type="tel" 
+              value={formData.bossPhone} 
+              placeholder="+7 (XXX) XXX-XX-XX" 
+              className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
+              onChange={handlePhoneChange}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">Почта руководителя</label>
-            <input type="email" value={formData.bossEmail} className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" onChange={e => setFormData({...formData, bossEmail: e.target.value})} />
+            <input 
+              type="email" 
+              value={formData.bossEmail} 
+              className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
+              onChange={e => setFormData({...formData, bossEmail: e.target.value})}
+            />
           </div>
           
           <div className="pt-4 space-y-4">
@@ -270,7 +390,7 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
         <div className="col-span-1 md:col-span-3 flex justify-center pt-10">
           <button 
             type="submit" 
-            disabled={isSubmitting}
+            disabled={isSubmitting || (isTeacher && !selectedStudentId)}
             className="w-full md:max-w-[400px] py-4 bg-[#F07D58] text-white rounded-2xl font-unbounded text-lg hover:bg-opacity-90 shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Отправка...' : 'Отправить заявку'}

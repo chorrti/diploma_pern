@@ -468,5 +468,92 @@ router.get('/:id/for-teacher', auth, catchAsync(async (req, res) => {
     });
 }));
 
+/**
+ * POST /api/applications/for-student
+ * Учитель подаёт заявку от лица ученика
+ */
+router.post('/for-student', auth, upload.single('file'), catchAsync(async (req, res) => {
+    const teacherId = req.user.profileId;
+    const userRole = req.user.role;
+    
+    if (userRole !== 'Учитель') {
+        return res.status(403).json({ error: 'Только учитель может подать заявку за ученика' });
+    }
+    
+    const { contestId, studentId, studentData } = req.body;
+    
+    if (!contestId || !studentId) {
+        return res.status(400).json({ error: 'ID конкурса и ID ученика обязательны' });
+    }
+    
+    // Проверяем, что ученик привязан к учителю
+    const accessCheck = await pool.query(`
+        SELECT 1 FROM teacher_student 
+        WHERE teacher_id = $1 AND student_id = $2
+    `, [teacherId, studentId]);
+    
+    if (accessCheck.rows.length === 0) {
+        return res.status(403).json({ error: 'У вас нет доступа к этому ученику' });
+    }
+    
+    // Проверяем, не подавал ли уже ученик заявку на этот конкурс
+    const existingCheck = await pool.query(`
+        SELECT id FROM competition_applications 
+        WHERE student_id = $1 AND competition_id = $2
+    `, [studentId, contestId]);
+    
+    if (existingCheck.rows.length > 0) {
+        return res.status(400).json({ 
+            error: 'Этот ученик уже подал заявку на этот конкурс'
+        });
+    }
+    
+    const data = JSON.parse(studentData);
+    
+    // Получаем данные учителя для заполнения полей руководителя
+    const teacherProfile = await pool.query(`
+        SELECT familia, name, otchestvo, phone, email FROM profiles WHERE id = $1
+    `, [teacherId]);
+    
+    const teacher = teacherProfile.rows[0];
+    const teacherFullName = `${teacher.familia} ${teacher.name} ${teacher.otchestvo || ''}`.trim();
+    
+    // Создаём заявку
+    const applicationResult = await pool.query(`
+        INSERT INTO competition_applications (
+            student_id, teacher_id, title, description, agreed_for_exhib, competition_id
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+    `, [
+        studentId,
+        teacherId,
+        data.workTitle,
+        data.workDesc,
+        data.exhibition === 'Да',
+        contestId
+    ]);
+    
+    const applicationId = applicationResult.rows[0].id;
+    
+    // Сохраняем ссылку (если есть)
+    if (data.link && data.link.trim()) {
+        await pool.query(`
+            INSERT INTO application_attachments (application_id, type, content)
+            VALUES ($1, 'link', $2)
+        `, [applicationId, data.link]);
+    }
+    
+    // Сохраняем файл (если есть)
+    if (req.file) {
+        const filePath = `/uploads/attachments/${req.file.filename}`;
+        await pool.query(`
+            INSERT INTO application_attachments (application_id, type, content)
+            VALUES ($1, 'file', $2)
+        `, [applicationId, filePath]);
+    }
+    
+    res.json({ message: 'Заявка успешно отправлена', applicationId });
+}));
+
 
 module.exports = router;

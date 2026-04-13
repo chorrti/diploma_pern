@@ -29,12 +29,12 @@ export const StudentCard = ({ id, fullName, email, phone }: StudentCardProps) =>
                     <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2">
                         {email && (
                             <p className="font-roboto text-brand-dark-teal opacity-70 text-sm">
-                                📧 {email}
+                                 {email}
                             </p>
                         )}
                         {phone && (
                             <p className="font-roboto text-brand-dark-teal opacity-70 text-sm">
-                                📞 {phone}
+                                 {phone}
                             </p>
                         )}
                     </div>
