@@ -1,17 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast';
 import api from '../api/client';
+import { fetchMyProfile } from '../api/profile';
+import type { ProfileData } from '../api/profile';
 
 interface ContestFormProps {
   userRole: string | null;
   contestId: number;
-  onSuccess: () => void;
+  onSuccess: (applicationId: number) => void;
 }
 
 export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps) => {
   const formRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isTeacher = userRole === 'teacher';
+  const isTeacher = userRole === 'Учитель';
+  const isStudent = userRole === 'Ученик';
+
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   const initialState = {
     surname: '', name: '', patronymic: '', org: '', city: '',
@@ -23,6 +29,35 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
   const [file, setFile] = useState<File | null>(null);
   const [agreed, setAgreed] = useState({ rules: false, pdn: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isStudent) {
+      const loadProfile = async () => {
+        try {
+          const data = await fetchMyProfile();
+          setProfile(data);
+          
+          const nameParts = data.fullName.split(' ');
+          setFormData(prev => ({
+            ...prev,
+            surname: nameParts[0] || '',
+            name: nameParts[1] || '',
+            patronymic: nameParts[2] || '',
+            org: data.organization || '',
+            city: data.city || ''
+          }));
+        } catch (error) {
+          console.error('Ошибка загрузки профиля:', error);
+          toast.error('Не удалось загрузить данные профиля');
+        } finally {
+          setLoadingProfile(false);
+        }
+      };
+      loadProfile();
+    } else {
+      setLoadingProfile(false);
+    }
+  }, [isStudent]);
 
   useEffect(() => {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -58,7 +93,6 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
     
     setIsSubmitting(true);
     
-    // TODO: Собрать FormData для отправки
     const formDataToSend = new FormData();
     formDataToSend.append('contestId', contestId.toString());
     formDataToSend.append('studentData', JSON.stringify({
@@ -80,7 +114,7 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
     }
     
     try {
-      await api.post('/applications', formDataToSend, {
+      const response = await api.post('/applications', formDataToSend, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
@@ -88,13 +122,18 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
       setFormData(initialState);
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      onSuccess();
+      
+      onSuccess(response.data.applicationId);
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Ошибка при отправке заявки');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (loadingProfile) {
+    return <div className="text-center py-20">Загрузка данных профиля...</div>;
+  }
 
   return (
     <div ref={formRef} className="w-full pb-20">
@@ -115,23 +154,53 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">Фамилия</label>
-            <input type="text" value={formData.surname} className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" onChange={e => setFormData({...formData, surname: e.target.value})} />
+            <input 
+              type="text" 
+              value={formData.surname} 
+              className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
+              onChange={e => setFormData({...formData, surname: e.target.value})}
+              disabled={isStudent}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">Имя</label>
-            <input type="text" value={formData.name} className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" onChange={e => setFormData({...formData, name: e.target.value})} />
+            <input 
+              type="text" 
+              value={formData.name} 
+              className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
+              onChange={e => setFormData({...formData, name: e.target.value})}
+              disabled={isStudent}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">Отчество</label>
-            <input type="text" value={formData.patronymic} className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" onChange={e => setFormData({...formData, patronymic: e.target.value})} />
+            <input 
+              type="text" 
+              value={formData.patronymic} 
+              className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
+              onChange={e => setFormData({...formData, patronymic: e.target.value})}
+              disabled={isStudent}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">Учреждение</label>
-            <input type="text" value={formData.org} className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" onChange={e => setFormData({...formData, org: e.target.value})} />
+            <input 
+              type="text" 
+              value={formData.org} 
+              className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
+              onChange={e => setFormData({...formData, org: e.target.value})}
+              disabled={isStudent}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">Город</label>
-            <input type="text" value={formData.city} className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" onChange={e => setFormData({...formData, city: e.target.value})} />
+            <input 
+              type="text" 
+              value={formData.city} 
+              className="w-full p-4 bg-[#EBF7F8] rounded-xl outline-none" 
+              onChange={e => setFormData({...formData, city: e.target.value})}
+              disabled={isStudent}
+            />
           </div>
         </div>
 

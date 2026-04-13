@@ -33,7 +33,7 @@ export const CompetitionCard = ({
     return userRole === 'Ученик' || userRole === 'Учитель';
   };
 
-  const handleApplyClick = (e: React.MouseEvent) => {
+const handleApplyClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     
     if (!userRole) {
@@ -46,12 +46,12 @@ export const CompetitionCard = ({
       return;
     }
     
-    // Открываем страницу конкурса с формой заявки
+    // ← ДОЛЖЕН БЫТЬ ПАРАМЕТР action=apply
     const params = new URLSearchParams();
     params.append('id', id.toString());
     params.append('action', 'apply');
     navigate(`/contest?${params.toString()}`);
-  };
+};
 
   const handleNavigate = (action?: 'results') => {
     const params = new URLSearchParams();

@@ -9,6 +9,8 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { fetchCompetitionById } from '../api/contests';
 import type { Competition } from '../api/contests';
 import { formatDate, getFileUrl } from '../utils/formatDate';
+import { checkMyApplicationForContest, fetchApplicationDetails } from '../api/applications';
+import type { ApplicationDetails } from '../api/applications';
 
 interface ContestPageProps {
   userRole: string | null;
@@ -30,31 +32,59 @@ export const ContestPage = ({ userRole }: ContestPageProps) => {
   const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [existingApplicationId, setExistingApplicationId] = useState<number | null>(null);
+  const [applicationDetails, setApplicationDetails] = useState<ApplicationDetails | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
 
-  // Функция проверки, может ли пользователь подать заявку
   const canApply = () => {
     if (!userRole) return false;
     return userRole === 'Ученик' || userRole === 'Учитель';
   };
 
-  // Обработчик нажатия на кнопку "Подать заявку"
-  const handleApplyClick = () => {
-    if (!userRole) {
-      toast.error('Для подачи заявки необходимо войти в систему');
+  useEffect(() => {
+    if (!contestId || userRole !== 'Ученик') {
+      setIsChecking(false);
       return;
     }
     
-    if (!canApply()) {
-      toast.error('Вы не можете подать заявку. Нужна роль "Ученик" или "Учитель"');
-      return;
+    const checkApplication = async () => {
+      try {
+        const result = await checkMyApplicationForContest(parseInt(contestId));
+        if (result.hasSubmitted) {
+          setHasSubmitted(true);
+          setExistingApplicationId(result.applicationId);
+        }
+      } catch (error) {
+        console.error('Ошибка проверки заявки:', error);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    
+    checkApplication();
+  }, [contestId, userRole]);
+
+  useEffect(() => {
+    if (!contest || isChecking) return;
+    
+    if (action === 'apply') {
+      if (!userRole) {
+        toast.error('Для подачи заявки необходимо войти в систему');
+      } else if (!canApply()) {
+        toast.error('Вы не можете подать заявку. Нужна роль "Ученик" или "Учитель"');
+      } else if (hasSubmitted && existingApplicationId) {
+        fetchApplicationDetails(existingApplicationId).then(details => {
+          setApplicationDetails(details);
+          setIsSubmissionModalOpen(true);
+        }).catch(() => toast.error('Не удалось загрузить заявку'));
+      } else {
+        setIsFormOpen(true);
+      }
     }
     
-    if (hasSubmitted) {
-      setIsSubmissionModalOpen(true);
-    } else {
-      setIsFormOpen(true);
-    }
-  };
+    if (action === 'results') setIsResultsModalOpen(true);
+    if (action === 'view') setIsSubmissionModalOpen(true);
+  }, [action, contest, userRole, hasSubmitted, existingApplicationId, isChecking]);
 
   useEffect(() => {
     if (!contestId) {
@@ -78,27 +108,34 @@ export const ContestPage = ({ userRole }: ContestPageProps) => {
     loadContest();
   }, [contestId]);
 
-  useEffect(() => {
-    if (!contest) return;
-    
-    if (action === 'apply') {
-      if (!userRole) {
-        toast.error('Для подачи заявки необходимо войти в систему');
-      } else if (!canApply()) {
-        toast.error('Вы не можете подать заявку. Нужна роль "Ученик" или "Учитель"');
-      } else {
-        setIsFormOpen(true);
-      }
+  const handleApplyClick = async () => {
+    if (!userRole) {
+      toast.error('Для подачи заявки необходимо войти в систему');
+      return;
     }
-    if (action === 'results') setIsResultsModalOpen(true);
-    if (action === 'view') setIsSubmissionModalOpen(true);
-  }, [action, contest, userRole]);
+    
+    if (!canApply()) {
+      toast.error('Вы не можете подать заявку. Нужна роль "Ученик" или "Учитель"');
+      return;
+    }
+    
+    if (hasSubmitted && existingApplicationId) {
+      try {
+        const details = await fetchApplicationDetails(existingApplicationId);
+        setApplicationDetails(details);
+        setIsSubmissionModalOpen(true);
+      } catch (error) {
+        toast.error('Не удалось загрузить данные заявки');
+      }
+    } else {
+      setIsFormOpen(true);
+    }
+  };
 
   const isFinished = status === 'finished' || contest?.status === 'archived';
   const isModerator = userRole === 'Модератор';
 
   const handleDeleteConfirm = () => {
-    console.log('Конкурс удален', contestId);
     navigate('/');
   };
 
@@ -108,14 +145,13 @@ export const ContestPage = ({ userRole }: ContestPageProps) => {
     }
   };
 
-  // Определяем заголовок для Helmet
   const pageTitle = loading 
     ? 'Загрузка... | Платформа конкурсов' 
     : error || !contest 
       ? 'Конкурс не найден | Платформа конкурсов' 
       : `${contest.name} | Платформа конкурсов`;
 
-  if (loading) {
+  if (loading || isChecking) {
     return (
       <div className="w-full max-w-[1200px] mx-auto px-6 py-10">
         <Helmet>
@@ -236,7 +272,11 @@ export const ContestPage = ({ userRole }: ContestPageProps) => {
             <ContestForm 
               userRole={userRole} 
               contestId={parseInt(contestId!)}
-              onSuccess={() => { setHasSubmitted(true); setIsFormOpen(false); }} 
+              onSuccess={(newApplicationId) => { 
+                setHasSubmitted(true); 
+                setExistingApplicationId(newApplicationId);
+                setIsFormOpen(false); 
+              }} 
             />
           </div>
         )}
@@ -251,7 +291,11 @@ export const ContestPage = ({ userRole }: ContestPageProps) => {
       
       <MySubmissionModal 
         isOpen={isSubmissionModalOpen} 
-        onClose={() => setIsSubmissionModalOpen(false)} 
+        onClose={() => {
+          setIsSubmissionModalOpen(false);
+          setApplicationDetails(null);
+        }} 
+        workDetails={applicationDetails}
       />
 
       <ConfirmModal 

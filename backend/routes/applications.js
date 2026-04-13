@@ -4,6 +4,134 @@ const pool = require('../db/pool');
 const catchAsync = require('../utils/catchAsync');
 const auth = require('../middleware/auth');
 const getFileUrl = require('../utils/fileUrl');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+
+// Настройка multer для загрузки файлов
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = 'uploads/attachments/';
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        const filename = `${uuidv4()}${ext}`;
+        cb(null, filename);
+    }
+});
+
+const upload = multer({ 
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Только изображения (JPEG, PNG)'));
+        }
+    }
+});
+
+/**
+ * POST /api/applications
+ * Создание заявки на конкурс
+ */
+router.post('/', auth, upload.single('file'), catchAsync(async (req, res) => {
+    const profileId = req.user.profileId;
+    const userRole = req.user.role;
+    
+    const { contestId, studentData } = req.body;
+    
+    if (!contestId) {
+        return res.status(400).json({ error: 'ID конкурса обязателен' });
+    }
+    
+    // Проверка: есть ли уже заявка
+    let existingApplicationId = null;
+    
+    if (userRole === 'Ученик') {
+        const existingCheck = await pool.query(`
+            SELECT id FROM competition_applications 
+            WHERE student_id = $1 AND competition_id = $2
+        `, [profileId, contestId]);
+        
+        if (existingCheck.rows.length > 0) {
+            existingApplicationId = existingCheck.rows[0].id;
+        }
+    }
+    
+    if (existingApplicationId) {
+        return res.status(400).json({ 
+            error: 'Вы уже подали заявку на этот конкурс',
+            existingApplicationId: existingApplicationId
+        });
+    }
+    
+    const data = JSON.parse(studentData);
+    
+    let studentProfileId = null;
+    let teacherProfileId = null;
+    
+    if (userRole === 'Ученик') {
+        studentProfileId = profileId;
+        
+        // Поиск учителя по номеру телефона
+        if (data.bossPhone) {
+            const cleanPhone = data.bossPhone.replace(/\D/g, '');
+            const teacherResult = await pool.query(`
+                SELECT id FROM profiles 
+                WHERE regexp_replace(phone, '[^0-9]', '', 'g') = $1 
+                AND role_id = (SELECT id FROM roles WHERE name = 'Учитель')
+                LIMIT 1
+            `, [cleanPhone]);
+            
+            if (teacherResult.rows.length > 0) {
+                teacherProfileId = teacherResult.rows[0].id;
+            }
+        }
+    } else if (userRole === 'Учитель') {
+        teacherProfileId = profileId;
+    }
+    
+    const applicationResult = await pool.query(`
+        INSERT INTO competition_applications (
+            student_id, teacher_id, title, description, agreed_for_exhib, competition_id
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+    `, [
+        studentProfileId,
+        teacherProfileId,
+        data.workTitle,
+        data.workDesc,
+        data.exhibition === 'Да',
+        contestId
+    ]);
+    
+    const applicationId = applicationResult.rows[0].id;
+    
+    if (data.link && data.link.trim()) {
+        await pool.query(`
+            INSERT INTO application_attachments (application_id, type, content)
+            VALUES ($1, 'link', $2)
+        `, [applicationId, data.link]);
+    }
+    
+    if (req.file) {
+        const filePath = `/uploads/attachments/${req.file.filename}`;
+        await pool.query(`
+            INSERT INTO application_attachments (application_id, type, content)
+            VALUES ($1, 'file', $2)
+        `, [applicationId, filePath]);
+    }
+    
+    res.json({ message: 'Заявка успешно отправлена', applicationId });
+}));
 
 /**
  * GET /api/applications/my
@@ -123,6 +251,7 @@ router.get('/:id', auth, catchAsync(async (req, res) => {
             p.city,
             p.phone,
             p.email,
+            -- Используем teacher_id из заявки, а не teacher_student
             teacher.familia as teacher_familia,
             teacher.name as teacher_name,
             teacher.otchestvo as teacher_otchestvo,
@@ -130,8 +259,7 @@ router.get('/:id', auth, catchAsync(async (req, res) => {
             link_att.content as link_url
         FROM competition_applications ca
         JOIN profiles p ON p.id = ca.student_id
-        LEFT JOIN teacher_student ts ON ts.student_id = ca.student_id
-        LEFT JOIN profiles teacher ON teacher.id = ts.teacher_id
+        LEFT JOIN profiles teacher ON teacher.id = ca.teacher_id
         LEFT JOIN application_attachments file_att ON file_att.application_id = ca.id AND file_att.type = 'file'
         LEFT JOIN application_attachments link_att ON link_att.application_id = ca.id AND link_att.type = 'link'
         WHERE ca.id = $1 AND ca.student_id = $2
@@ -172,6 +300,26 @@ router.get('/:id', auth, catchAsync(async (req, res) => {
         },
         submittedAt: row.submitted_at
     });
+}));
+
+/**
+ * GET /api/applications/my/contest/:contestId
+ * Проверяет, подавал ли ученик заявку на конкретный конкурс
+ */
+router.get('/my/contest/:contestId', auth, catchAsync(async (req, res) => {
+    const profileId = req.user.profileId;
+    const { contestId } = req.params;
+    
+    const result = await pool.query(`
+        SELECT id FROM competition_applications 
+        WHERE student_id = $1 AND competition_id = $2
+    `, [profileId, contestId]);
+    
+    if (result.rows.length > 0) {
+        res.json({ hasSubmitted: true, applicationId: result.rows[0].id });
+    } else {
+        res.json({ hasSubmitted: false, applicationId: null });
+    }
 }));
 
 module.exports = router;

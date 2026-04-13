@@ -57,26 +57,26 @@ export interface ApplicationDetails {
     submittedAt: string;
 }
 
-/**
- * Получить список заявок текущего ученика
- */
 export const fetchMyApplications = async (): Promise<MyApplication[]> => {
     const response = await api.get('/applications/my');
     return response.data;
 };
 
-/**
- * Получить список дипломов текущего ученика
- */
 export const fetchMyDiplomas = async (): Promise<MyDiploma[]> => {
     const response = await api.get('/results/my');
     return response.data;
 };
 
-/**
- * Получить детали заявки по ID
- */
 export const fetchApplicationDetails = async (id: number): Promise<ApplicationDetails> => {
     const response = await api.get(`/applications/${id}`);
     return response.data;
+};
+
+export const checkMyApplicationForContest = async (contestId: number): Promise<{ hasSubmitted: boolean; applicationId: number | null }> => {
+    try {
+        const response = await api.get(`/applications/my/contest/${contestId}`);
+        return response.data;
+    } catch (error) {
+        return { hasSubmitted: false, applicationId: null };
+    }
 };

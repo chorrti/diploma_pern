@@ -48,11 +48,11 @@ export const MySubmissionModal = ({ isOpen, onClose, workDetails }: MySubmission
                                 </h2>
                                 
                                 {work.imageUrl && (
-                                    <div className="w-full h-64 mb-6 rounded-2xl overflow-hidden bg-gray-100">
+                                    <div className="w-full mb-6 rounded-2xl overflow-hidden bg-gray-100 flex justify-center">
                                         <img 
                                             src={work.imageUrl} 
                                             alt={work.title} 
-                                            className="w-full h-full object-cover"
+                                            className="max-w-full h-auto object-contain"
                                         />
                                     </div>
                                 )}
@@ -130,11 +130,11 @@ export const MySubmissionModal = ({ isOpen, onClose, workDetails }: MySubmission
                             </h2>
                             
                             {work.imageUrl && (
-                                <div className="w-full h-64 mb-6 rounded-2xl overflow-hidden bg-gray-100">
+                                <div className="w-full mb-6 rounded-2xl overflow-hidden bg-gray-100 flex justify-center">
                                     <img 
                                         src={work.imageUrl} 
                                         alt={work.title} 
-                                        className="w-full h-full object-cover"
+                                        className="max-w-full h-auto object-contain"
                                     />
                                 </div>
                             )}
