@@ -633,5 +633,44 @@ router.post('/for-student', auth, upload.single('file'), catchAsync(async (req, 
     res.json({ message: 'Заявка успешно отправлена', applicationId });
 }));
 
+/**
+ * GET /api/applications/competition/:competitionId
+ * Возвращает список заявок на конкурс (для модератора)
+ */
+router.get('/competition/:competitionId', auth, catchAsync(async (req, res) => {
+    if (req.user.role !== 'Модератор') {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const { competitionId } = req.params;
+    
+    const result = await pool.query(`
+        SELECT 
+            ca.id as application_id,
+            ca.title,
+            ca.description,
+            p.familia,
+            p.name,
+            p.otchestvo,
+            p.organization,
+            p.city
+        FROM competition_applications ca
+        JOIN profiles p ON p.id = ca.student_id
+        WHERE ca.competition_id = $1
+        ORDER BY p.familia, p.name
+    `, [competitionId]);
+    
+    const applications = result.rows.map(app => ({
+        id: app.application_id,
+        title: app.title,
+        description: app.description,
+        studentName: `${app.familia} ${app.name} ${app.otchestvo || ''}`.trim(),
+        organization: app.organization,
+        city: app.city
+    }));
+    
+    res.json(applications);
+}));
+
 
 module.exports = router;

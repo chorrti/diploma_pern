@@ -2,30 +2,41 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
 interface ModeratorContestCardProps {
+  id: number;
   title: string;
   start: string;
   end: string;
   results: string;
   desc: string;
-  onAction1: () => void;
-  onAction2?: () => void;
   isResults?: boolean;
+  onComplete?: () => void;
+  onAction1?: () => void;
+  onAction2?: () => void;
 }
 
 export const ModeratorContestCard = ({
-  title, start, end, results, desc, onAction1, onAction2, isResults
+  id,
+  title,
+  start,
+  end,
+  results,
+  desc,
+  isResults = false,
+  onComplete,
+  onAction1,
+  onAction2
 }: ModeratorContestCardProps) => {
   
-  const handleAction = (e: React.MouseEvent, action: () => void) => {
-    e.preventDefault(); 
-    e.stopPropagation(); 
-    action();
+  const handleAction = (e: React.MouseEvent, action?: () => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (action) action();
   };
 
   return (
-    <Link to="/contest?role=moderator" className="block mb-8">
+    <Link to={`/contest?id=${id}`} className="block mb-8">
       <motion.div 
-        whileHover={{ y: -5 }} // Теперь только подъем, тень останется на месте
+        whileHover={{ y: -5 }}
         className="bg-brand-light-teal border border-brand-accent-teal rounded-[40px] p-10 md:p-12 shadow-[0_6px_0_0_#337D86] transition-all"
       >
         <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-8">
@@ -40,26 +51,37 @@ export const ModeratorContestCard = ({
             </div>
           </div>
           
-<div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
-  {/* Кнопка отображается только если isResults === true */}
-  {isResults && (
-    <button 
-      onClick={(e) => handleAction(e, onAction1)}
-      className="border border-brand-dark-teal text-brand-dark-teal px-8 py-3.5 rounded-xl font-roboto hover:bg-brand-dark-teal hover:text-white transition-all text-base whitespace-nowrap active:scale-95 text-center"
-    >
-      Компиляция для жюри
-    </button>
-  )}
-  
-  {isResults && onAction2 && (
-    <button 
-      onClick={(e) => handleAction(e, onAction2)}
-      className="border border-brand-dark-teal text-brand-dark-teal px-8 py-3.5 rounded-xl font-roboto hover:bg-brand-dark-teal hover:text-white transition-all text-base whitespace-nowrap active:scale-95 text-center"
-    >
-      Опубликовать результаты
-    </button>
-  )}
-</div>
+          <div className="flex flex-col gap-3 shrink-0 w-full md:w-auto">
+            {/* Для вкладки "Конкурсы" — кнопка "Завершить конкурс" */}
+            {!isResults && onComplete && (
+              <button 
+                onClick={(e) => handleAction(e, onComplete)}
+                className="border border-brand-dark-teal text-brand-dark-teal px-8 py-3.5 rounded-xl font-roboto hover:bg-brand-dark-teal hover:text-white transition-all text-base whitespace-nowrap active:scale-95 text-center"
+              >
+                Завершить конкурс
+              </button>
+            )}
+            
+            {/* Для вкладки "Результаты" — кнопки компиляции и публикации */}
+            {isResults && (
+              <>
+                <button 
+                  onClick={(e) => handleAction(e, onAction1)}
+                  className="border border-brand-dark-teal text-brand-dark-teal px-8 py-3.5 rounded-xl font-roboto hover:bg-brand-dark-teal hover:text-white transition-all text-base whitespace-nowrap active:scale-95 text-center"
+                >
+                  Компиляция для жюри
+                </button>
+                {onAction2 && (
+                  <button 
+                    onClick={(e) => handleAction(e, onAction2)}
+                    className="border border-brand-dark-teal text-brand-dark-teal px-8 py-3.5 rounded-xl font-roboto hover:bg-brand-dark-teal hover:text-white transition-all text-base whitespace-nowrap active:scale-95 text-center"
+                  >
+                    Опубликовать результаты
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         <div className="pt-8 border-t border-brand-dark-teal/20">

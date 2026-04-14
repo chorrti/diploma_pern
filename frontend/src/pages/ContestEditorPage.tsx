@@ -149,10 +149,10 @@ export const ContestEditorPage = () => {
                 onClick={() => fileInputRef.current?.click()}
                 className={`w-full h-28 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-[#EBF7F8] transition-all cursor-pointer ${file ? 'border-brand-orange' : 'border-brand-accent-teal/40 hover:border-brand-orange'}`}
               >
-                <input type="file" ref={fileInputRef} hidden accept=".pdf,.doc,.docx" onChange={e => setFile(e.target.files?.[0] || null)} />
+                <input type="file" ref={fileInputRef} hidden accept=".pdf" onChange={e => setFile(e.target.files?.[0] || null)} />
                 <span className="text-3xl mb-2 opacity-60">{file ? '📄' : '☁️'}</span>
                 <span className="text-xs opacity-60 text-center px-4">
-                  {file ? `Выбрано: ${file.name}` : 'Нажмите, чтобы загрузить PDF или DOC'}
+                  {file ? `Выбрано: ${file.name}` : 'Нажмите, чтобы загрузить PDF'}
                 </span>
               </div>
             </div>

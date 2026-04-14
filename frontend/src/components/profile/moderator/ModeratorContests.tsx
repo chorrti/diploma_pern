@@ -1,28 +1,48 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom'; // Импортируем навигацию
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { ModeratorContestCard } from './ModeratorContestCard';
+import { fetchCompetitions, updateCompetitionStatus } from '../../../api/contests';
+import type { Competition } from '../../../api/contests';
+import { formatDate, getFileUrl } from '../../../utils/formatDate';
 
 export const ModeratorContests = () => {
-  const navigate = useNavigate(); // Инициализируем
+  const navigate = useNavigate();
+  const [contests, setContests] = useState<Competition[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const contests = [
-    {
-      id: 1,
-      title: "Конкурс под названием названием названием названием названием названием..................",
-      start: "01.01.2025",
-      end: "02.02.2025",
-      results: "03.03.2025",
-      desc: "During the initial consultation, we will discuss your business goals and objectives..."
-    },
-    {
-      id: 2,
-      title: "Еще один активный конкурс без капса в заголовке",
-      start: "15.02.2025",
-      end: "20.03.2025",
-      results: "25.03.2025",
-      desc: "Описание второго конкурса для проверки верстки и отступов между карточками."
+  const loadContests = async () => {
+    try {
+      const data = await fetchCompetitions('open');
+      setContests(data);
+    } catch (error) {
+      console.error('Ошибка загрузки конкурсов:', error);
+      toast.error('Не удалось загрузить конкурсы');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    loadContests();
+  }, []);
+
+  const handleComplete = async (id: number) => {
+    try {
+      await updateCompetitionStatus(id, 'closed');
+      toast.success('Конкурс завершён');
+      // Удаляем завершённый конкурс из списка
+      setContests(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Ошибка завершения конкурса:', error);
+      toast.error('Не удалось завершить конкурс');
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-20">Загрузка...</div>;
+  }
 
   return (
     <div className="space-y-12">
@@ -30,7 +50,6 @@ export const ModeratorContests = () => {
         <motion.button 
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          // ПЕРЕХОД: Просто на страницу создания
           onClick={() => navigate('/contest/edit')}
           className="bg-brand-accent-teal text-white px-12 py-4 rounded-2xl font-unbounded text-sm hover:opacity-90 transition-all uppercase tracking-wider font-normal shadow-[0_6px_0_0_#337D86] active:translate-y-[2px] active:shadow-none"
         >
@@ -38,16 +57,25 @@ export const ModeratorContests = () => {
         </motion.button>
       </div>
 
-      <div className="grid grid-cols-1">
-        {contests.map((contest) => (
-          <ModeratorContestCard 
-            key={contest.id}
-            {...contest}
-            isResults={false}
-            onAction1={() => console.log('Компиляция заявок для:', contest.id)}
-          />
-        ))}
-      </div>
+      {contests.length === 0 ? (
+        <p className="text-center text-gray-500 py-20">Нет активных конкурсов</p>
+      ) : (
+        <div className="grid grid-cols-1">
+          {contests.map((contest) => (
+            <ModeratorContestCard 
+              key={contest.id}
+              id={contest.id}
+              title={contest.name}
+              start={formatDate(contest.startDate)}
+              end={formatDate(contest.endDate)}
+              results={formatDate(contest.resultsDate)}
+              desc={contest.description}
+              isResults={false}
+              onComplete={() => handleComplete(contest.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

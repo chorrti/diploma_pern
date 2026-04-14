@@ -51,3 +51,10 @@ export const fetchCompetitionById = async (id: number): Promise<Competition> => 
     const response = await api.get(`/competitions/${id}`);
     return response.data;
 };
+
+/**
+ * Изменить статус конкурса
+ */
+export const updateCompetitionStatus = async (id: number, status: string): Promise<void> => {
+    await api.patch(`/competitions/${id}/status`, { status });
+};

@@ -10,6 +10,7 @@ export interface Thematic {
     name: string;
 }
 
+
 /**
  * Получить список всех степеней
  */

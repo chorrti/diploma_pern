@@ -5,6 +5,9 @@ export interface MyApplication {
     title: string;
     description: string;
     submittedAt: string;
+    studentName: string;      // ← добавить
+    organization: string;      // ← добавить
+    city: string;              // ← добавить
     contest: {
         id: number;
         name: string;
@@ -121,5 +124,13 @@ export const downloadStudentDiplomas = async (studentId: number): Promise<Blob> 
     const response = await api.get(`/results/student/${studentId}/zip`, {
         responseType: 'blob'
     });
+    return response.data;
+};
+
+/**
+ * Получить список заявок на конкурс (для модератора)
+ */
+export const fetchApplicationsForCompetition = async (competitionId: number): Promise<MyApplication[]> => {
+    const response = await api.get(`/applications/competition/${competitionId}`);
     return response.data;
 };

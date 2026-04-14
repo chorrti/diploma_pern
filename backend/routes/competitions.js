@@ -3,6 +3,8 @@ const router = express.Router();
 const pool = require('../db/pool');
 const catchAsync = require('../utils/catchAsync');
 const getFileUrl = require('../utils/fileUrl');
+const auth = require('../middleware/auth');
+
 
 /**
  * GET /api/competitions
@@ -96,6 +98,68 @@ router.get('/:id', catchAsync(async (req, res) => {
     row.regulationFilePath = getFileUrl(row.regulationFilePath);
     
     res.json(row);
+}));
+
+
+
+/**
+ * PATCH /api/competitions/:id/status
+ * Изменяет статус конкурса (только для модератора)
+ * Тело запроса: { status: 'open' | 'closed' | 'archived' }
+ */
+router.patch('/:id/status', auth, catchAsync(async (req, res) => {
+    if (req.user.role !== 'Модератор') {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    // Проверяем, существует ли конкурс
+    const existing = await pool.query('SELECT id FROM competitions WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+        return res.status(404).json({ error: 'Конкурс не найден' });
+    }
+    
+    // Проверяем допустимость статуса
+    const allowedStatuses = ['open', 'closed', 'archived'];
+    if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ error: 'Недопустимый статус' });
+    }
+    
+    await pool.query('UPDATE competitions SET status = $1 WHERE id = $2', [status, id]);
+    
+    res.json({ message: 'Статус конкурса обновлён', status });
+}));
+
+/**
+ * PATCH /api/competitions/:id/status
+ * Изменяет статус конкурса (только для модератора/админа)
+ * Тело запроса: { status: 'open' | 'closed' | 'archived' }
+ */
+router.patch('/:id/status', auth, catchAsync(async (req, res) => {
+    if (req.user.role !== 'Модератор' && req.user.role !== 'Админ') {
+        return res.status(403).json({ error: 'Доступ запрещён' });
+    }
+    
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    // Проверяем, существует ли конкурс
+    const existing = await pool.query('SELECT id FROM competitions WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+        return res.status(404).json({ error: 'Конкурс не найден' });
+    }
+    
+    // Проверяем допустимость статуса
+    const allowedStatuses = ['open', 'closed', 'archived'];
+    if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ error: 'Недопустимый статус' });
+    }
+    
+    await pool.query('UPDATE competitions SET status = $1 WHERE id = $2', [status, id]);
+    
+    res.json({ message: 'Статус конкурса обновлён', status });
 }));
 
 module.exports = router;
