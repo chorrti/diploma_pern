@@ -11,6 +11,8 @@ import type { Competition } from '../api/contests';
 import { formatDate, getFileUrl } from '../utils/formatDate';
 import { checkMyApplicationForContest, fetchApplicationDetails } from '../api/applications';
 import type { ApplicationDetails } from '../api/applications';
+import { deleteCompetition } from '../api/contests';
+
 
 interface ContestPageProps {
   userRole: string | null;
@@ -135,9 +137,17 @@ export const ContestPage = ({ userRole }: ContestPageProps) => {
   const isFinished = status === 'finished' || contest?.status === 'archived';
   const isModerator = userRole === 'Модератор';
 
-  const handleDeleteConfirm = () => {
-    navigate('/');
-  };
+const handleDeleteConfirm = async () => {
+    if (!contestId) return;
+    try {
+        await deleteCompetition(parseInt(contestId));
+        toast.success('Конкурс удалён');
+        navigate('/');
+    } catch (error) {
+        console.error('Ошибка удаления:', error);
+        toast.error('Не удалось удалить конкурс');
+    }
+};
 
   const handleRegulationClick = () => {
     if (contest?.regulationFilePath) {

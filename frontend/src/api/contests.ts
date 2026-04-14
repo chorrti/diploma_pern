@@ -58,3 +58,31 @@ export const fetchCompetitionById = async (id: number): Promise<Competition> => 
 export const updateCompetitionStatus = async (id: number, status: string): Promise<void> => {
     await api.patch(`/competitions/${id}/status`, { status });
 };
+
+
+/**
+ * Создать новый конкурс
+ */
+export const createCompetition = async (data: FormData): Promise<{ id: number }> => {
+    const response = await api.post('/competitions', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+};
+
+/**
+ * Обновить конкурс
+ */
+export const updateCompetition = async (id: number, data: FormData): Promise<void> => {
+    await api.put(`/competitions/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    });
+};
+
+/**
+ * Удалить конкурс (мягкое удаление)
+ */
+export const deleteCompetition = async (id: number): Promise<void> => {
+    await api.delete(`/competitions/${id}`);
+};
+
