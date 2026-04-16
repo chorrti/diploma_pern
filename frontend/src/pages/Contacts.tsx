@@ -17,31 +17,30 @@ export const Contacts = () => {
             <div className="space-y-6">
               <div>
                 <p className="text-sm opacity-60 font-unbounded mb-1">Адрес</p>
-                <p className="text-xl">г. Улан-Удэ, ул. Смолина, 24а</p>
+                <p className="text-xl">630108, Российская Федерация, Сибирский федеральный округ, Новосибирская обл., г. Новосибирск, ул. Котовского, дом 38</p>
               </div>
               <div>
                 <p className="text-sm opacity-60 font-unbounded mb-1">Телефон</p>
-                <p className="text-xl">+7 (999) 000-00-00</p>
+                <p className="text-xl">+7 (913) 773-48-97</p>
               </div>
             </div>
 
             <div className="space-y-6">
               <div>
-                <p className="text-sm opacity-60 font-unbounded mb-1">Электронная почта</p>
-                <p className="text-xl">info@portfolio-art.ru</p>
+                <p className="text-sm opacity-60 font-unbounded mb-1">VK</p>
+                <a href="https://vk.com/itcub17classgim" className="text-xl">vk.com/itcub17classgim</a>
               </div>
               <div>
                 <p className="text-sm opacity-60 font-unbounded mb-1">Режим работы</p>
-                <p className="text-xl">Пн — Пт: 09:00 - 18:00</p>
+                <p className="text-xl">Пн — Сб: 08:00 - 20:00</p>
               </div>
             </div>
           </div>
           
           <div className="mt-12 pt-10 border-t border-brand-orange/20">
             <p className="font-unbounded text-brand-red-dark text-lg mb-4">Техническая поддержка</p>
-            <p className="font-roboto text-brand-red-dark opacity-80 max-w-2xl">
-              Если у вас возникли вопросы по работе платформы или подаче заявок, 
-              пожалуйста, напишите нам на почту с пометкой «Техподдержка».
+            <p className="font-roboto text-brand-red-dark opacity-80 max-w-3xl">
+              Если у вас возникли вопросы, пожалуйста, напишите в вк или позвоните по телефону.
             </p>
           </div>
         </div>
