@@ -627,7 +627,7 @@ router.post('/for-student', auth, upload.single('file'), catchAsync(async (req, 
                 await pool.query(`
                     INSERT INTO exhibition (student_id, city, file_path, competition_id, is_published)
                     VALUES ($1, $2, $3, $4, false)
-                `, [studentProfileId, data.city, imagePath, contestId]);
+                `, [studentId, data.city, imagePath, contestId]);
             }
 
     res.json({ message: 'Заявка успешно отправлена', applicationId });

@@ -14,30 +14,30 @@ const pool = require('../db/pool');
 
 // Данные для админа
 const ADMIN_DATA = {
-    login: 'admin@example.com',
-    password: 'Admin123!',
+    login: 'admin',
+    password: 'changed', //
     name: 'Администратор',
     familia: 'Системный',
     otchestvo: '',
-    email: 'admin@example.com',
-    phone: '+7 (000) 000-00-00',
-    city: 'Москва',
-    birth_date: '2000-05-10',
-    organization: 'Платформа'
+    email: 'itcubenotification@gmail.com', //
+    phone: '+7 (000) 000-00-00', //
+    city: 'Новосибирск',
+    birth_date: '2000-01-01',
+    organization: 'IT-cube'
 };
 
 // Данные для модератора
 const MODERATOR_DATA = {
-    login: 'moderator@example.com',
-    password: 'Moder123!',
+    login: 'moderator',
+    password: 'changed', //
     name: 'Модератор',
     familia: 'Системный',
     otchestvo: '',
-    email: 'moderator@example.com',
-    phone: '+7 (000) 000-00-01',
-    city: 'Москва',
-    birth_date: '2000-05-10',
-    organization: 'Платформа'
+    email: 'qwerty@gmail.com', //
+    phone: '+7 (000) 000-00-01', //
+    city: 'Новосибирск',
+    birth_date: '2000-01-01',
+    organization: 'IT-cube'
 };
 
 /**

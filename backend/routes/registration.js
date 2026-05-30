@@ -171,7 +171,7 @@ router.post('/approve/:id', auth, catchAsync(async (req, res) => {
             
             // Отправляем письмо
             sendEmail(request.email, 'Аккаунт восстановлен', 
-                `Ваш аккаунт был восстановлен!\n\nЛогин: ${login}\nПароль: ${password}\n\nРекомендуем сменить пароль после входа.`
+                `Ваш аккаунт был восстановлен!\n\nЛогин: ${login}\nПароль: ${password}`
             );
             
             return res.json({ message: 'Аккаунт восстановлен' });
@@ -220,7 +220,7 @@ router.post('/approve/:id', auth, catchAsync(async (req, res) => {
     await pool.query(`DELETE FROM registration_requests WHERE id = $1`, [id]);
     
     sendEmail(request.email, 'Регистрация подтверждена', 
-        `Ваша заявка на платформе Портфель одобрена!\n\nЛогин: ${login}\nПароль: ${password}\n\nРекомендуем сменить пароль после входа.`
+        `Ваша заявка на платформе Портфель одобрена!\n\nЛогин: ${login}\nПароль: ${password}`
     );
     
     res.json({ message: 'Заявка одобрена' });

@@ -85,7 +85,7 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
     }
   }, [isTeacher]);
 
-  // Загрузка данных учителя
+  // Загрузка данных учителя (только при монтировании и если роль учитель)
   useEffect(() => {
     if (isTeacher) {
       const loadTeacherData = async () => {
@@ -156,6 +156,25 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
     return null;
   };
 
+  // Функция для сброса данных ученика и полей работы (данные учителя остаются)
+  const resetStudentAndWorkFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      surname: '',
+      name: '',
+      patronymic: '',
+      org: '',
+      city: '',
+      workTitle: '',
+      workDesc: '',
+      link: '',
+      exhibition: ''
+    }));
+    setFile(null);
+    setSelectedStudentId(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const err = validate();
@@ -183,11 +202,8 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         
-        //toast.success('Заявка успешно отправлена!');
-        setFormData(initialState);
-        setFile(null);
-        setSelectedStudentId(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
+        // Сбрасываем данные ученика и поля работы, данные учителя остаются
+        resetStudentAndWorkFields();
         
         onSuccess(response.data.applicationId);
       } catch (err: any) {
@@ -260,6 +276,7 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
       )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-6">
+        {/* Левая колонка — данные ученика */}
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">Фамилия</label>
@@ -308,6 +325,7 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
           </div>
         </div>
 
+        {/* Средняя колонка — руководитель и согласия */}
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">ФИО Руководителя</label>
@@ -362,6 +380,7 @@ export const ContestForm = ({ userRole, contestId, onSuccess }: ContestFormProps
           </div>
         </div>
 
+        {/* Правая колонка — данные работы */}
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm opacity-80 ml-2">Название работы</label>

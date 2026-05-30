@@ -5,6 +5,19 @@ const jwt = require('jsonwebtoken');
 const pool = require('../db/pool');
 const catchAsync = require('../utils/catchAsync');
 const { generateRandomPassword, sendEmail } = require('../utils/helpers');
+const rateLimit = require('express-rate-limit');
+
+// ============================================
+// ЗАЩИТА ОТ БРУТФОРСА (ПЕРЕБОРА ПАРОЛЕЙ)
+// ============================================
+// Лимитер: не более 5 попыток входа за 15 минут с одного IP
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 минут
+    max: 5,                   // максимум 5 попыток
+    message: { error: 'Слишком много попыток входа. Попробуйте через 15 минут.' },
+    standardHeaders: true,    // Отправлять заголовки RateLimit-*
+    legacyHeaders: false,     // Отключить устаревшие заголовки
+});
 
 /**
  * POST /api/auth/login
@@ -22,7 +35,7 @@ const { generateRandomPassword, sendEmail } = require('../utils/helpers');
  *   }
  * }
  */
-router.post('/login', catchAsync(async (req, res) => {
+router.post('/login', loginLimiter, catchAsync(async (req, res) => {
     const { login, password } = req.body;
     
     // 1. Проверяем, что логин и пароль переданы
@@ -147,10 +160,10 @@ router.post('/forgot-password', catchAsync(async (req, res) => {
     // 5. Отправляем письмо
     const emailText = `Здравствуйте, ${fullName}!
 
-        Вы запросили восстановление доступа к аккаунту на платформе "Портфель".
+Вы запросили восстановление доступа к аккаунту на платформе "Портфель".
 
-        Логин: ${profile.login}
-        Новый пароль: ${newPassword}`;
+Логин: ${profile.login}
+Новый пароль: ${newPassword}`;
     
     await sendEmail(email, 'Восстановление пароля', emailText);
     
